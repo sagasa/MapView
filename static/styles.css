@@ -1,0 +1,10 @@
+body {
+    margin: 0;
+    overflow-y: hidden;
+}
+
+#info {
+    position: absolute;
+    left:  0px;                /* 左からの位置指定 */
+    top: 0px;                  /* 上からの位置指定 */
+}
