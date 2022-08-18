@@ -18,96 +18,133 @@ function addPoints(p1: Point, p2: Point) {
 }
 
 function scalePoint(p1: Point, scale: number) {
-  return { x: p1.x / scale, y: p1.y / scale };
+  return { x: p1.x * scale, y: p1.y * scale };
 }
 
+
+const img = new Image();
+img.src =
+        "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/5/55/CustomsLargeExpansionGloryMonki.png";
+img.referrerPolicy = "no-referrer";
+
+
+
 function Canvas() {
-  const canvasRef = useRef(null);
+  const mainCanvasRef = useRef(null);
+  const subCanvasRef = useRef(null);
   const size: Size = useWindowSize();
   const getContext = (): CanvasRenderingContext2D => {
-    const canvas: any = canvasRef.current;
+    const canvas: any = mainCanvasRef.current;
     return canvas.getContext("2d");
   };
 
   //マウス位置
   const [mousePos, setMousePos] = useState<Point>(ORIGIN);
   const lastMousePosRef = useRef<Point>(ORIGIN);
+  let lastRefTest:Point = ORIGIN;
+
+  //マウス移動
+  function handleUpdateMove(event: MouseEvent) {
+    event.preventDefault();
+    //マウスの位置処理
+    const lastMousePos = lastMousePosRef.current;
+    //console.log("Move ",lastRefTest,lastMousePos)
+    const currentMousePos = { x: event.pageX, y: event.pageY }; // use document so can pan off element
+    lastMousePosRef.current = currentMousePos;
+    lastRefTest = currentMousePos;
+    //差分化
+    const mouseDiff = diffPoints(currentMousePos, lastMousePos);
+    if (event.buttons & 1) {
+      
+      setOffset((prevOffset) => {
+        //console.log(scalePoint(mouseDiff,scale),scale)
+        return  scalePoint(mouseDiff,scale)});
+      
+      const ctx: CanvasRenderingContext2D = getContext();
+      
+      ctx.translate(mouseDiff.x/ctx.getTransform().a, mouseDiff.y/ctx.getTransform().d);
+    }
+    const viewportMousePos = { x: event.clientX, y: event.clientY };
+  }
+
+  //マウスホイール
+  function handleUpdateWheel(event: WheelEvent) {
+    event.preventDefault();
+    if (event.deltaY) {
+      const scaleDeff = 1-event.deltaY*0.001;
+        //console.log(event);
+        setScale(prev=>prev*(scaleDeff))
+        const ctx: CanvasRenderingContext2D = getContext();
+        const zeroPos = ctx.getTransform().transformPoint({x:event.clientX,y:event.clientY});
+        ctx.translate(-zeroPos.x,-zeroPos.y);
+        ctx.scale(scaleDeff,scaleDeff);
+        ctx.translate(zeroPos.x,zeroPos.y);
+    }
+
+  }
 
   //初期化
   useEffect(() => {
     const ctx: CanvasRenderingContext2D = getContext();
-    const canvas: any = canvasRef.current;
+    const canvas: any = mainCanvasRef.current;
 
-    //マウス移動関連
-    function handleUpdateMouse(event: MouseEvent) {
-      event.preventDefault();
-      //マウスの位置処理
-      const lastMousePos = lastMousePosRef.current;
-      const currentMousePos = { x: event.pageX, y: event.pageY }; // use document so can pan off element
-      lastMousePosRef.current = currentMousePos;
-      //差分化
-      const mouseDiff = diffPoints(currentMousePos,lastMousePos);
-      if (event.buttons & 1){
-        console.log(mouseDiff)
-        setOffset(addPoints(offset,mouseDiff));
-      }
-
-      const viewportMousePos = { x: event.clientX, y: event.clientY };
-      
-    }
-    console.log("初期化")
-    canvas.addEventListener("mousemove", handleUpdateMouse);
-    //canvas.addEventListener("wheel", handleUpdateMouse);
+    console.log("初期化");
+    canvas.addEventListener("mousemove", handleUpdateMove);
+    canvas.addEventListener("wheel", handleUpdateWheel);
     return () => {
-      canvas.removeEventListener("mousemove", handleUpdateMouse);
-      //canvas.removeEventListener("wheel", handleUpdateMouse);
+      canvas.removeEventListener("mousemove", handleUpdateMove);
+      canvas.removeEventListener("wheel", handleUpdateWheel);
     };
-  }, [canvasRef]);
+  }, [mainCanvasRef]);
 
   //表示関連
   const [offset, setOffset] = useState<Point>(ORIGIN);
-  const lastOffsetRef = useRef<Point>(ORIGIN);
-  //参照の更新
-  useEffect(() => {
-    lastOffsetRef.current = offset;
-  }, [offset]);
+  const [scale, setScale] = useState<number>(1);
 
   useLayoutEffect(() => {
     const ctx: CanvasRenderingContext2D = getContext();
-    if (ctx && lastOffsetRef.current) {
-      const offsetDiff: Point = {
-        x: offset.x - lastOffsetRef.current.x,
-        y: offset.y - lastOffsetRef.current.y,
-      };
-      ctx.translate(offset.x, offset.y);
+    if (ctx) {
+
+      //ctx.resetTransform()
+      ctx.clearRect(0, 0, size.width!, size.height!);
+      
+      
       //setViewportTopLeft((prevVal) => diffPoints(prevVal, offsetDiff));
       //    isResetRef.current = false;
 
-      ctx.strokeRect(0, 0, 100, 100);
-      const img = new Image();
-      img.src =
-        "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/5/55/CustomsLargeExpansionGloryMonki.png";
-      img.referrerPolicy = "no-referrer";
-      img.onload = () => {
-        ctx.drawImage(img, 0, 0, img.width, img.height);
-      };
+      const inversed= ctx.getTransform().inverse();
+      
+      const zeroPos = ctx.getTransform().transformPoint({x:-lastMousePosRef.current.x/ctx.getTransform().a,y:-lastMousePosRef.current.y/ctx.getTransform().a});
+    
+      zeroPos.x/= ctx.getTransform().a;
+      zeroPos.y/= ctx.getTransform().d;
+      console.log(ctx.getTransform(),zeroPos,mainCanvasRef);
+      
+      ctx.drawImage(img, 0, 0, img.width, img.height);
+      ctx.strokeRect(-zeroPos.x, -zeroPos.y, 10, 10);
+      //console.log(offset);
       ctx.save();
     }
-  }, [offset]);
+  }, [offset,scale,size.width,size.height]);
 
   return (
-    <canvas
-      className="canvas"
-      ref={canvasRef}
-      style={{
-        border: "2px solid #000",
-        width: `${size.width}px`,
-        height: `${size.height}px`,
-        boxSizing: `border-box`,
-      }}
-      width={size.width}
-      height={size.height}
-    />
+    <div>
+      <canvas
+        className="canvas"
+        ref={mainCanvasRef}
+        style={{
+          border: "2px solid #000",
+          width: `${size.width}px`,
+          height: `${size.height}px`,
+          boxSizing: `border-box`,
+        }}
+        width={size.width}
+        height={size.height}
+      />
+      <div>
+        <canvas></canvas>
+      </div>
+    </div>
   );
 }
 
@@ -127,8 +164,8 @@ function useWindowSize(): Size {
     function handleResize() {
       // Set window width/height to state
       setWindowSize({
-        width: window.innerWidth,
-        height: window.innerHeight,
+        width: window.innerWidth/2,
+        height: window.innerHeight/2,
       });
     }
 

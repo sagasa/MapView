@@ -7,5 +7,9 @@ import Info from "./info";
 
 const canvasRoot = createRoot(document.getElementById("canvas")!);
 const infoRoot = createRoot(document.getElementById("info")!);
+
+const canvas2Root = createRoot(document.getElementById("canvas2")!);
+
 canvasRoot.render(<Canvas/>);
+canvas2Root.render(<Canvas/>);
 infoRoot.render(<Info/>);

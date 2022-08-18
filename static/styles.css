@@ -5,6 +5,27 @@ body {
 
 #info {
     position: absolute;
-    left:  0px;                /* 左からの位置指定 */
-    top: 0px;                  /* 上からの位置指定 */
+    left: 0px;
+    /* 左からの位置指定 */
+    top: 0px;
+    /* 上からの位置指定 */
+}
+
+#flex {
+    position: absolute;
+    left: 0px;
+    /* 左からの位置指定 */
+    top: 0px;
+    /* 上からの位置指定 */
+
+    width: 100px;
+    height: 100px;
+    background-color: #080808;
+
+    /* 水平垂直方向にリサイズ可能 */
+    resize: both;
+
+    /* resizeを指定するため 'visible'以外を指定 */
+    overflow: hidden;
+    background-color: red;
 }
