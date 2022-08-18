@@ -10,6 +10,6 @@ const infoRoot = createRoot(document.getElementById("info")!);
 
 const canvas2Root = createRoot(document.getElementById("canvas2")!);
 
-canvasRoot.render(<Canvas/>);
-canvas2Root.render(<Canvas/>);
+canvasRoot.render(<Canvas isFullScreen={true}/>);
+canvas2Root.render(<Canvas isFullScreen={false}/>);
 infoRoot.render(<Info/>);
