@@ -21,6 +21,10 @@ function scalePoint(p1: Point, scale: number) {
   return { x: p1.x * scale, y: p1.y * scale };
 }
 
+function divPoint(p1: Point, scale: number) {
+  return { x: p1.x / scale, y: p1.y / scale };
+}
+
 const img = new Image();
 img.src =
   "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/5/55/CustomsLargeExpansionGloryMonki.png";
@@ -64,17 +68,11 @@ const MapCanvas: React.FC<Props> = (props) => {
     const mouseDiff = diffPoints(currentMousePos, lastMousePos);
     if (event.buttons & 1) {
       lastRefTest = currentMousePos;
-      setOffset((prevOffset) => {
-        //console.log(scalePoint(mouseDiff,scale),scale)
-        return scalePoint(mouseDiff, scale);
-      });
 
       const ctx: CanvasRenderingContext2D = getContext();
+      console.log(scale);
+      setOffset((prevOffset) => addPoints(prevOffset,divPoint(mouseDiff, scaleRaw)));
 
-      ctx.translate(
-        mouseDiff.x / ctx.getTransform().a,
-        mouseDiff.y / ctx.getTransform().d
-      );
     }
     const viewportMousePos = { x: event.clientX, y: event.clientY };
   }
@@ -83,16 +81,11 @@ const MapCanvas: React.FC<Props> = (props) => {
   function handleUpdateWheel(event: WheelEvent) {
     event.preventDefault();
     if (event.deltaY) {
-      const scaleDeff = 1 - event.deltaY * 0.001;
-      console.log(lastRefTest);
-      setScale((prev) => prev * scaleDeff);
-      const ctx: CanvasRenderingContext2D = getContext();
-      const zeroPos = ctx
-        .getTransform()
-        .transformPoint({ x: event.clientX, y: event.clientY });
-      ctx.translate(-zeroPos.x, -zeroPos.y);
-      ctx.scale(scaleDeff, scaleDeff);
-      ctx.translate(zeroPos.x, zeroPos.y);
+      const scaleDeff = event.deltaY * 0.001
+      scaleRaw *= 1 - scaleDeff;
+
+      setOffset(prev=>addPoints(prev,scalePoint(lastMousePosRef.current,scaleDeff/scaleRaw)));
+      setScale(scaleRaw);
     }
   }
 
@@ -113,13 +106,18 @@ const MapCanvas: React.FC<Props> = (props) => {
   //表示関連
   const [offset, setOffset] = useState<Point>(ORIGIN);
   const [scale, setScale] = useState<number>(1);
+  let scaleRaw = 1;
 
   useLayoutEffect(() => {
     const ctx: CanvasRenderingContext2D = getContext();
     if (ctx) {
-      //ctx.resetTransform()
+      ctx.resetTransform()
       ctx.clearRect(0, 0, size.width!, size.height!);
-
+      ctx.globalAlpha = 0.3
+      ctx.font = '20px serif';
+      ctx.scale(scale,scale)
+      ctx.translate(offset.x,offset.y)
+      
       //setViewportTopLeft((prevVal) => diffPoints(prevVal, offsetDiff));
       //    isResetRef.current = false;
 
@@ -134,7 +132,7 @@ const MapCanvas: React.FC<Props> = (props) => {
 
       zeroPos.x /= ctx.getTransform().a;
       zeroPos.y /= ctx.getTransform().d;
-      console.log(ctx.getTransform(), zeroPos, mainCanvasRef);
+      //console.log(ctx.getTransform(), zeroPos, mainCanvasRef);
 
       ctx.drawImage(img, 0, 0, img.width, img.height);
       ctx.strokeRect(-zeroPos.x, -zeroPos.y, 10, 10);
