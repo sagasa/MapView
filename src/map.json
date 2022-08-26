@@ -1,0 +1,34 @@
+{
+    "url":"https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/5/55/CustomsLargeExpansionGloryMonki.png",
+    "regions":[
+        {
+            "outline":[
+                {
+                    "x":89,
+                    "y":46
+                },
+                {
+                    "x":376,
+                    "y":46
+                },
+                {
+                    "x":376,
+                    "y":205
+                },
+                {
+                    "x":249,
+                    "y":205
+                },
+                {
+                    "x":249,
+                    "y":461
+                },
+                {
+                    "x":89,
+                    "y":461
+                }
+            ]
+            
+        }
+    ]
+}

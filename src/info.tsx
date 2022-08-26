@@ -1,47 +1,44 @@
-import ReactDOM from 'react-dom';
-import React, {useEffect,useState, useRef} from 'react';
+import ReactDOM from "react-dom";
+import React, { useEffect, useState, useRef } from "react";
+import Draggable from "react-draggable";
 
 function Info() {
-    const size: Size = useWindowSize();
-    return (
-      <div>
-        {size.width}px / {size.height}px
-      </div>
-    );
-  }
 
 
-  interface Size {
-    width: number | undefined;
-    height: number | undefined;
-}
-
-function useWindowSize():Size{
-    const [windowSize, setWindowSize] = useState<Size>({
-        width: undefined,
-        height: undefined,
-      });
-
-      useEffect(() => {
-        // Handler to call on window resize
-        function handleResize() {
-          // Set window width/height to state
-          setWindowSize({
-            width: window.innerWidth,
-            height: window.innerHeight-100,
-          });
-        }
-
-        // Add event listener
-        window.addEventListener("resize", handleResize);
-
-        // Call handler right away so state gets updated with initial window size
-        handleResize();
-
-        // Remove event listener on cleanup
-        return () => window.removeEventListener("resize", handleResize);
-      }, []); // Empty array ensures that effect is only run on mount
-      return windowSize;
+  return (
+    <div>
+      <table>
+        <tbody>
+          <tr>
+            <td>自分の位置</td>
+            <td>目的地</td>
+            <td>パス描画</td>
+          </tr>
+          <tr>
+            <td>PMC</td>
+            <td>疑い(PMC)</td>
+            <td>死体(PMC)</td>
+          </tr>
+          <tr>
+            <td>SCAV</td>
+            <td>疑い(SCAV)</td>
+            <td>死体(SCAV)</td>
+          </tr>
+          <tr>
+            <td>BOSS</td>
+            <td>疑い(BOSS)</td>
+            <td>死体(BOSS)</td>
+          </tr>
+          <tr>
+            <td>クエスト</td>
+            <td>ペン描画</td>
+            <td>矢印描画</td>
+          </tr>
+    
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 export default Info;

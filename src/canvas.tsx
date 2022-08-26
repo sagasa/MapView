@@ -1,6 +1,11 @@
 import ReactDOM from "react-dom";
-
+import Draggable from "react-draggable";
 import React, { useEffect, useState, useRef, useLayoutEffect } from "react";
+import get from "superagent";
+
+import MapInfo from "./map.json";
+
+console.log("json test")
 
 //位置
 type Point = {
@@ -26,13 +31,24 @@ function divPoint(p1: Point, scale: number) {
 }
 
 const img = new Image();
-img.src =
-  "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/5/55/CustomsLargeExpansionGloryMonki.png";
+img.src = MapInfo.url;
 img.referrerPolicy = "no-referrer";
 
 type Props = {
   isFullScreen: boolean;
 };
+
+function httpTest(){
+  const url = `${window.location.protocol}//${window.location.hostname}:8080/api`;
+  console.log(url);
+  get
+  .get(url)
+  .end(function(err, res){
+    console.log(res);//レスポンス
+    //レスポンスがJSONの場合 
+    console.log(res);//ここにparse済みのオブジェクトが入る
+  });
+}
 
 const MapCanvas: React.FC<Props> = (props) => {
   const resizeOps = props.isFullScreen ? "none" : "both";
@@ -50,6 +66,7 @@ const MapCanvas: React.FC<Props> = (props) => {
   const [mousePos, setMousePos] = useState<Point>(ORIGIN);
   const lastMousePosRef = useRef<Point>(ORIGIN);
   let lastRefTest: Point = ORIGIN;
+  let inDrag = false;
 
   //マウス移動
   function handleUpdateMove(event: MouseEvent) {
@@ -66,15 +83,17 @@ const MapCanvas: React.FC<Props> = (props) => {
 
     //差分化
     const mouseDiff = diffPoints(currentMousePos, lastMousePos);
-    if (event.buttons & 1) {
-      lastRefTest = currentMousePos;
-
-      const ctx: CanvasRenderingContext2D = getContext();
-      console.log(scale);
+    if (event.buttons & 1&&inDrag) {
       setOffset((prevOffset) => addPoints(prevOffset,divPoint(mouseDiff, scaleRaw)));
-
+    }else{
+      inDrag=false
     }
-    const viewportMousePos = { x: event.clientX, y: event.clientY };
+  }
+
+  //マウスクリック
+  function handleUpdateDown(event: MouseEvent) {
+    inDrag = true
+    httpTest()
   }
 
   //マウスホイール
@@ -89,17 +108,27 @@ const MapCanvas: React.FC<Props> = (props) => {
     }
   }
 
+  
+  function reset(){
+    //console.log()
+    //setScale(Math.min(size.width!/img.width,size.height!/img.height))
+  }
+
   //初期化
   useEffect(() => {
     const ctx: CanvasRenderingContext2D = getContext();
     const canvas: any = mainCanvasRef.current;
 
+    //リセット
+    reset();
     console.log("初期化");
     canvas.addEventListener("mousemove", handleUpdateMove);
     canvas.addEventListener("wheel", handleUpdateWheel);
+    canvas.addEventListener("mousedown", handleUpdateDown);
     return () => {
       canvas.removeEventListener("mousemove", handleUpdateMove);
       canvas.removeEventListener("wheel", handleUpdateWheel);
+      canvas.removeEventListener("mousedown", handleUpdateDown);
     };
   }, [mainCanvasRef]);
 
@@ -109,7 +138,12 @@ const MapCanvas: React.FC<Props> = (props) => {
   let scaleRaw = 1;
 
   useLayoutEffect(() => {
+    reset()
+  }, [size.width, size.height]);
+
+  useLayoutEffect(() => {
     const ctx: CanvasRenderingContext2D = getContext();
+
     if (ctx) {
       ctx.resetTransform()
       ctx.clearRect(0, 0, size.width!, size.height!);
@@ -136,6 +170,16 @@ const MapCanvas: React.FC<Props> = (props) => {
 
       ctx.drawImage(img, 0, 0, img.width, img.height);
       ctx.strokeRect(-zeroPos.x, -zeroPos.y, 10, 10);
+
+      ctx.strokeStyle = "red";
+      ctx.beginPath();
+      const outline = MapInfo.regions[0].outline;
+      ctx.moveTo(outline[outline.length-1].x,outline[outline.length-1].y)
+      MapInfo.regions[0].outline.forEach(e=>{
+        ctx.lineTo(e.x,e.y);
+      })
+      ctx.stroke()
+
       //console.log(offset);
       ctx.save();
     }
