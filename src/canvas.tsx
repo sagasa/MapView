@@ -5,11 +5,8 @@ import get from "superagent";
 import * as vec2 from "./vec2";
 
 import MapInfo from "./map.json";
+import { util } from "webpack";
 
-console.log("json test")
-MapInfo.regions[0].outline.forEach(e=>{
-  console.log()
-})
 
 //位置
 type Point = {
@@ -50,6 +47,8 @@ const MapCanvas: React.FC<Props> = (props) => {
     return canvas.getContext("2d");
   };
 
+  console.log("make func")
+
   //マウス位置
   const [mousePos, setMousePos] = useState<Point>(ORIGIN);
   const lastMousePosRef = useRef<Point>(ORIGIN);
@@ -61,27 +60,49 @@ const MapCanvas: React.FC<Props> = (props) => {
     event.preventDefault();
     //マウスの位置処理
     const lastMousePos = lastMousePosRef.current;
-    //console.log("Move ",lastRefTest,lastMousePos)
-    const canvas: any = mainCanvasRef.current;
-    const currentMousePos = {
-      x: event.pageX - canvas.offsetLeft,
-      y: event.pageY - canvas.offsetTop,
-    };
+
+    const currentMousePos = screen2CanvasPos(event.pageX,event.pageY)
     lastMousePosRef.current = currentMousePos;
 
     //差分化
     const mouseDiff = vec2.sub(currentMousePos, lastMousePos);
     if (event.buttons & 1&&inDrag) {
+      offsetRaw = vec2.add(offsetRaw,vec2.div(mouseDiff, scaleRaw))
       setOffset((prevOffset) => vec2.add(prevOffset,vec2.div(mouseDiff, scaleRaw)));
     }else{
       inDrag=false
     }
   }
 
+  //スクリーン座標からキャンバス座標に
+  function screen2CanvasPos(x:number,y:number){
+    const canvas: any = mainCanvasRef.current;
+    return {
+      x: x - canvas.offsetLeft,
+      y: y - canvas.offsetTop,
+    }
+  }
+  //キャンバス座標からイメージ座標へ
+  function canvas2ImagePos(pos:vec2.Vec2){
+    
+    return vec2.sub(vec2.div(pos,scale),offset)
+    //return vec2.div(pos,scaleRaw)
+  }
+
   //マウスクリック
   function handleUpdateDown(event: MouseEvent) {
     inDrag = true
-    httpTest()
+    
+    screen2CanvasPos(event.pageX,event.pageY)
+    const mousePos = vec2.sub(vec2.mul(lastMousePosRef.current,scaleRaw),offsetRaw)
+
+    const isHit = MapInfo.regions[0].outlines.some(outline=>outline.every((p0,i)=>{
+      const p1 = outline[(outline.length + i + 1) % outline.length];
+      return 0<vec2.cross3(p0,p1,mousePos);
+    }))
+    console.log(isHit)
+
+    //httpTest()
   }
 
   //マウスホイール
@@ -100,6 +121,46 @@ const MapCanvas: React.FC<Props> = (props) => {
   function reset(){
     //console.log()
     //setScale(Math.min(size.width!/img.width,size.height!/img.height))
+  }
+
+  //canvasに描画
+  function write(){
+    const ctx: CanvasRenderingContext2D = getContext();
+
+    if (ctx) {
+      ctx.resetTransform()
+      ctx.clearRect(0, 0, size.width!, size.height!);
+      //ctx.globalAlpha = 0.3
+      ctx.font = '20px serif';
+      ctx.scale(scale,scale)
+      ctx.translate(offset.x,offset.y)
+      
+      //setViewportTopLeft((prevVal) => diffPoints(prevVal, offsetDiff));
+      //    isResetRef.current = false;
+
+      const inversed = ctx.getTransform().inverse();
+
+      const zeroPos = canvas2ImagePos(lastMousePosRef.current)
+
+
+      //console.log(ctx.getTransform(), zeroPos, mainCanvasRef);
+
+      ctx.drawImage(img, 0, 0, img.width, img.height);
+      ctx.strokeRect(zeroPos.x, zeroPos.y, 10, 10);
+
+      ctx.strokeStyle = "red";
+      
+      MapInfo.regions[0].outlines.forEach(outline=>{
+        ctx.beginPath();
+        ctx.moveTo(outline[outline.length-1].x,outline[outline.length-1].y)
+        outline.forEach(e=>{
+          ctx.lineTo(e.x,e.y);
+        })
+        ctx.stroke()
+      })
+      //console.log(offset);
+      ctx.save();
+    }
   }
 
   //初期化
@@ -122,6 +183,7 @@ const MapCanvas: React.FC<Props> = (props) => {
 
   //表示関連
   const [offset, setOffset] = useState<Point>(ORIGIN);
+  let offsetRaw = {x:0,y:0};
   const [scale, setScale] = useState<number>(1);
   let scaleRaw = 1;
 
@@ -130,48 +192,8 @@ const MapCanvas: React.FC<Props> = (props) => {
   }, [size.width, size.height]);
 
   useLayoutEffect(() => {
-    const ctx: CanvasRenderingContext2D = getContext();
-
-    if (ctx) {
-      ctx.resetTransform()
-      ctx.clearRect(0, 0, size.width!, size.height!);
-      //ctx.globalAlpha = 0.3
-      ctx.font = '20px serif';
-      ctx.scale(scale,scale)
-      ctx.translate(offset.x,offset.y)
-      
-      //setViewportTopLeft((prevVal) => diffPoints(prevVal, offsetDiff));
-      //    isResetRef.current = false;
-
-      const inversed = ctx.getTransform().inverse();
-
-      const zeroPos = ctx
-        .getTransform()
-        .transformPoint({
-          x: -lastMousePosRef.current.x / ctx.getTransform().a,
-          y: -lastMousePosRef.current.y / ctx.getTransform().a,
-        });
-
-      zeroPos.x /= ctx.getTransform().a;
-      zeroPos.y /= ctx.getTransform().d;
-      //console.log(ctx.getTransform(), zeroPos, mainCanvasRef);
-
-      ctx.drawImage(img, 0, 0, img.width, img.height);
-      ctx.strokeRect(-zeroPos.x, -zeroPos.y, 10, 10);
-
-      ctx.strokeStyle = "red";
-      ctx.beginPath();
-      const outline = MapInfo.regions[0].outline;
-      ctx.moveTo(outline[outline.length-1].x,outline[outline.length-1].y)
-      MapInfo.regions[0].outline.forEach(e=>{
-        ctx.lineTo(e.x,e.y);
-      })
-      ctx.stroke()
-
-      //console.log(offset);
-      ctx.save();
-    }
-  }, [offset, scale, size.width, size.height]);
+    write();
+  }, [size.width, size.height]);
 
   return (
     <div
