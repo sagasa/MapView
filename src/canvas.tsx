@@ -2,10 +2,14 @@ import ReactDOM from "react-dom";
 import Draggable from "react-draggable";
 import React, { useEffect, useState, useRef, useLayoutEffect } from "react";
 import get from "superagent";
+import * as vec2 from "./vec2";
 
 import MapInfo from "./map.json";
 
 console.log("json test")
+MapInfo.regions[0].outline.forEach(e=>{
+  console.log()
+})
 
 //位置
 type Point = {
@@ -13,22 +17,6 @@ type Point = {
   y: number;
 };
 const ORIGIN = Object.freeze({ x: 0, y: 0 });
-
-function diffPoints(p1: Point, p2: Point) {
-  return { x: p1.x - p2.x, y: p1.y - p2.y };
-}
-
-function addPoints(p1: Point, p2: Point) {
-  return { x: p1.x + p2.x, y: p1.y + p2.y };
-}
-
-function scalePoint(p1: Point, scale: number) {
-  return { x: p1.x * scale, y: p1.y * scale };
-}
-
-function divPoint(p1: Point, scale: number) {
-  return { x: p1.x / scale, y: p1.y / scale };
-}
 
 const img = new Image();
 img.src = MapInfo.url;
@@ -39,7 +27,7 @@ type Props = {
 };
 
 function httpTest(){
-  const url = `${window.location.protocol}//${window.location.hostname}:8080/api`;
+  const url = `${window.location.protocol}//${window.location.hostname}:3001/api`;
   console.log(url);
   get
   .get(url)
@@ -82,9 +70,9 @@ const MapCanvas: React.FC<Props> = (props) => {
     lastMousePosRef.current = currentMousePos;
 
     //差分化
-    const mouseDiff = diffPoints(currentMousePos, lastMousePos);
+    const mouseDiff = vec2.sub(currentMousePos, lastMousePos);
     if (event.buttons & 1&&inDrag) {
-      setOffset((prevOffset) => addPoints(prevOffset,divPoint(mouseDiff, scaleRaw)));
+      setOffset((prevOffset) => vec2.add(prevOffset,vec2.div(mouseDiff, scaleRaw)));
     }else{
       inDrag=false
     }
@@ -103,7 +91,7 @@ const MapCanvas: React.FC<Props> = (props) => {
       const scaleDeff = event.deltaY * 0.001
       scaleRaw *= 1 - scaleDeff;
 
-      setOffset(prev=>addPoints(prev,scalePoint(lastMousePosRef.current,scaleDeff/scaleRaw)));
+      setOffset(prev=>vec2.add(prev,vec2.mul(lastMousePosRef.current,scaleDeff/scaleRaw)));
       setScale(scaleRaw);
     }
   }
@@ -147,7 +135,7 @@ const MapCanvas: React.FC<Props> = (props) => {
     if (ctx) {
       ctx.resetTransform()
       ctx.clearRect(0, 0, size.width!, size.height!);
-      ctx.globalAlpha = 0.3
+      //ctx.globalAlpha = 0.3
       ctx.font = '20px serif';
       ctx.scale(scale,scale)
       ctx.translate(offset.x,offset.y)
