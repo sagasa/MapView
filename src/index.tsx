@@ -8,8 +8,8 @@ import Info from "./info";
 const canvasRoot = createRoot(document.getElementById("canvas")!);
 const infoRoot = createRoot(document.getElementById("info")!);
 
-const canvas2Root = createRoot(document.getElementById("canvas2")!);
+//const canvas2Root = createRoot(document.getElementById("canvas2")!);
+//canvas2Root.render(<Canvas isFullScreen={false}/>);
 
 canvasRoot.render(<Canvas isFullScreen={true}/>);
-canvas2Root.render(<Canvas isFullScreen={false}/>);
 infoRoot.render(<Info/>);
