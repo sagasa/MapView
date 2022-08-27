@@ -30,6 +30,7 @@ const config: Configuration = {
     devServer: {
         open: true,
         port: 3000,
+        allowedHosts:["all"],
         static:{
             directory:path.resolve(__dirname, 'static'),
         }

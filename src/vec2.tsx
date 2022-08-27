@@ -13,9 +13,11 @@ export type Pos3 = {
   p2:Vec2;
 }
 
-console.log(
-calcAffine({p0:{x:0,y:0},p1:{x:600,y:0},p2:{x:0,y:400}},{p0:{x:200,y:100},p1:{x:719.6152,y:400},p2:{x:0,y:446.4102}})
-)
+console.log(calcAffine({p0:{x:0,y:0},p1:{x:600,y:0},p2:{x:0,y:400}},{p0:{x:200,y:100},p1:{x:719.6152,y:400},p2:{x:0,y:446.4102}}))
+
+const test = new DOMMatrix()
+test.scaleSelf(2,2)
+console.log(test)
 
 export function calcAffine(pos0:Pos3,pos1:Pos3){
   const mat = new Matrix([
@@ -29,11 +31,7 @@ export function calcAffine(pos0:Pos3,pos1:Pos3){
   const inversed = inverse(mat);
   const dst = Matrix.columnVector([pos1.p0.x,pos1.p0.y,pos1.p1.x,pos1.p1.y,pos1.p2.x,pos1.p2.y]);
   const ans = inversed.mmul(dst);
-  return new Matrix([
-    [ans.get(0,0),ans.get(1,0),ans.get(2,0)],
-    [ans.get(3,0),ans.get(4,0),ans.get(5,0)],
-    [0,0,1]
-  ])
+  return new DOMMatrix([ans.get(0,0),ans.get(3,0),ans.get(1,0),ans.get(4,0),ans.get(2,0),ans.get(5,0)])
 }
 
 export function isOnline(a: Vec2, b: Vec2, c: Vec2){

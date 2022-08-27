@@ -1,10 +1,13 @@
 import ReactDOM from "react-dom";
-import Draggable from "react-draggable";
 import React, { useEffect, useState, useRef, useLayoutEffect ,useCallback} from "react";
 import get from "superagent";
 import * as vec2 from "./vec2";
 
 import MapInfo from "./map.json";
+
+//変換行列テスト
+const affine = vec2.calcAffine(MapInfo.regions[0].difference.src,MapInfo.regions[0].difference.dest)
+affine.inverse();
 
 //位置
 type Point = {
@@ -16,6 +19,9 @@ const ORIGIN = Object.freeze({ x: 0, y: 0 });
 const img = new Image();
 img.src = MapInfo.url;
 img.referrerPolicy = "no-referrer";
+
+const ping = new Image();
+ping.src = "/ping.png";
 
 type Props = {
   isFullScreen: boolean;
@@ -49,7 +55,10 @@ const MapCanvas: React.FC<Props> = (props) => {
   const size: Size = props.isFullScreen
     ? useWindowSize()
     : useParentSize(divRef);
-  const getContext = (): CanvasRenderingContext2D => {
+  
+  const [cursor,setCursor] = useState<string>("auto")
+  
+    const getContext = (): CanvasRenderingContext2D => {
     const canvas: any = mainCanvasRef.current;
     return canvas.getContext("2d");
   };
@@ -78,54 +87,66 @@ const MapCanvas: React.FC<Props> = (props) => {
   const inDragRef =  useRef<boolean>(false);
 
   //マウス移動
-  function handleMouseMove(event: React.MouseEvent<HTMLCanvasElement>) {
+  const handleMouseMove = useCallback((event: React.MouseEvent<HTMLCanvasElement>)=>{
     //マウスの位置処理
     const lastMousePos = lastMousePosRef.current;
 
     const currentMousePos = screen2CanvasPos(event.pageX,event.pageY)
     lastMousePosRef.current = currentMousePos;
-
     //差分化
     const mouseDiff = vec2.sub(currentMousePos, lastMousePos);
-    if (event.buttons & 1&&inDragRef.current) {
+    if (inDragRef.current&&event.buttons&0b101) {
       offsetRef.current = vec2.add(offsetRef.current,vec2.div(mouseDiff, scaleRef.current))
       write();
-      //setOffset((prevOffset) => vec2.add(prevOffset,vec2.div(mouseDiff, scaleRaw)));
     }else{
       inDragRef.current=false
+      setCursor("auto")
     }
-  }
+  },[])
 
-  //マウスクリック
-  function handleMouseDown(event: React.MouseEvent<HTMLCanvasElement>) {
-    inDragRef.current = true
+  //クリック
+  const handleMouseDown = useCallback((event: React.MouseEvent<HTMLCanvasElement>)=>{
+    if(event.buttons&0b101){
+      inDragRef.current = true;
+      setCursor("move");
+    }
     
+    event.preventDefault();
     screen2CanvasPos(event.pageX,event.pageY)
-    const mousePos = vec2.sub(vec2.mul(lastMousePosRef.current,scaleRef.current),offsetRef.current)
-
+    const mousePos = canvas2ImagePos(screen2CanvasPos(event.clientX,event.clientY))
     const isHit = MapInfo.regions[0].outlines.some(outline=>outline.every((p0,i)=>{
       const p1 = outline[(outline.length + i + 1) % outline.length];
       return 0<vec2.cross3(p0,p1,mousePos);
     }))
-    console.log(isHit)
-
+    
     //httpTest()
-  }
+  },[])
+  const handleMouseUp = useCallback((event: React.MouseEvent<HTMLCanvasElement>)=>{
+      inDragRef.current = false;
+      //console.log(event)
+    if(event.buttons&0b101){
+    }
+    setCursor("auto");
+    event.preventDefault();
+  },[])
 
-  function handleMouseWheel(event: React.WheelEvent) {
+  //マウスホイール
+  const handleMouseWheel = useCallback((event: React.WheelEvent)=>{
     if (event.deltaY) {
       const scaleDeff = event.deltaY * 0.001
       scaleRef.current *= 1 - scaleDeff;
       offsetRef.current = vec2.add(offsetRef.current,vec2.mul(lastMousePosRef.current,scaleDeff/scaleRef.current))
-      //setOffset(prev=>vec2.add(prev,vec2.mul(lastMousePosRef.current,scaleDeff/scaleRaw)));
-      //setScale(scaleRaw);
       write();
     }
+  },[])
+
+  function handleMenu(event:React.MouseEvent<HTMLCanvasElement>){
+    event.preventDefault();
   }
 
     //表示関連
-    const offsetRef = useRef<Point>(ORIGIN);
-    const scaleRef = useRef<number>(1);
+  const offsetRef = useRef<Point>(ORIGIN);
+  const scaleRef = useRef<number>(1);
 
   //canvasに描画
   function write(){
@@ -150,6 +171,11 @@ const MapCanvas: React.FC<Props> = (props) => {
       //console.log(ctx.getTransform(), zeroPos, mainCanvasRef);
 
       ctx.drawImage(img, 0, 0, img.width, img.height);
+
+      for(let i = 0;i<10;i++){
+        ctx.drawImage(ping, i*100, 0, ping.width/scaleRef.current, ping.height/scaleRef.current);
+      }
+
       ctx.strokeRect(zeroPos.x, zeroPos.y, 10, 10);
 
       ctx.strokeStyle = "red";
@@ -162,6 +188,19 @@ const MapCanvas: React.FC<Props> = (props) => {
         })
         ctx.stroke()
       })
+
+      MapInfo.regions[0].outlines.forEach(outline=>{
+        ctx.beginPath();
+        const last = affine.transformPoint(outline[outline.length-1]);
+        ctx.moveTo(last.x,last.y)
+        outline.forEach(e=>{
+          const pos = affine.transformPoint(e);
+          ctx.lineTo(pos.x,pos.y);
+        })
+        ctx.stroke()
+      })
+
+      
       //console.log(offset);
       ctx.save();
     }
@@ -188,12 +227,15 @@ const MapCanvas: React.FC<Props> = (props) => {
         ref={mainCanvasRef}
         onMouseMove={handleMouseMove}
         onMouseDown={handleMouseDown}
+        onMouseUp={handleMouseUp}
         onWheel={handleMouseWheel}
+        onContextMenu={handleMenu}
         style={{
           //border: "2px solid #000",
           width: `${size.width}px`,
           height: `${size.height}px`,
           boxSizing: `border-box`,
+          cursor: `${cursor}`,
         }}
         width={size.width}
         height={size.height}
