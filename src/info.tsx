@@ -33,9 +33,10 @@ function Info() {
             <td>ペン描画</td>
             <td>矢印描画</td>
           </tr>
-    
         </tbody>
       </table>
+      <input type="color" id="body" name="body" defaultValue="#f6b73c"></input>
+      <input type="text" id="body" name="body" defaultValue="Name"></input>
     </div>
   );
 }

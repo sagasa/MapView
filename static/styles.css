@@ -11,6 +11,12 @@ body {
     /* 上からの位置指定 */
 }
 
+#state{
+    position:absolute;
+    top:0px;
+    right:0px;
+}
+
 #flex {
     position: absolute;
     left: 0px;
