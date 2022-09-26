@@ -92,6 +92,11 @@ const MapCanvas: React.FC<Props> = (props) => {
     return canvas.getContext("2d");
   };
 
+  //初期化
+  useEffect(() => {
+    penToolRef.current.onChange = write;
+  }, []);
+
   //スクリーン座標からキャンバス座標に
   function screen2CanvasPos(x: number, y: number) {
     const canvas: any = mainCanvasRef.current;
@@ -213,7 +218,7 @@ const MapCanvas: React.FC<Props> = (props) => {
   const scaleRef = useRef<number>(1);
 
   //canvasに描画
-  function write() {
+  const write =()=>{
     const ctx: CanvasRenderingContext2D = getContext();
     
     if (ctx) {
