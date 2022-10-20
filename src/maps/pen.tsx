@@ -1,4 +1,4 @@
-import { Connection } from "../connections/connecton";
+
 import * as vec2 from "../vec2";
 
 type TDrawData = {
@@ -14,14 +14,6 @@ export class PenTool {
   current: TDrawData|null = null;
 
   all = new Map<string, TDrawData>();
-
-  constructor(){
-    Connection.register("addDraw",(data)=>{
-      const draw = JSON.parse(data) as TDrawData
-      this.onChange()
-      this.all.set(draw.id,draw)
-    })
-  }
 
   onChange = ()=>{}
 
@@ -40,8 +32,8 @@ export class PenTool {
   end = () => {
     if(this.current){
         const key = Math.random().toString(16).slice(2, 10);
-        //this.all.set(key,this.current)
-        Connection.send("addDraw",this.current)
+        this.all.set(key,this.current)
+        this.onChange()
         console.log(key)
     }
   };

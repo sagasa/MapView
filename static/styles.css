@@ -11,6 +11,39 @@ body {
     /* 上からの位置指定 */
 }
 
+.topLeft {
+    position: absolute;
+    left: 0px;
+    top: 0px;
+}
+
+.listElement{
+    position:relative;
+    background:gray;
+    width: 120px;
+    height: 50px;
+    font-size: 20px;
+    border-radius: 6px;
+    text-align: center;
+    margin: 2px;
+}
+.listElement:hover {
+    background-color: #ffdaf8;
+}
+.listElement.select {
+    background-color: #80a0e6;
+}
+
+.listElement p{
+    position:absolute;
+    width: 70px;
+    height: 20px;
+    align-items: center;
+
+	display: block;
+
+}
+
 #state{
     position:absolute;
     top:0px;

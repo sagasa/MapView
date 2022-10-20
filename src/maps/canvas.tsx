@@ -1,75 +1,32 @@
-import ReactDOM from "react-dom";
 import React, {
   useEffect,
   useState,
   useRef,
   useLayoutEffect,
   useCallback,
-  useContext
+  useContext,
 } from "react";
-import get from "superagent";
-
 
 import * as vec2 from "../vec2";
-
-import MapJson from "../map.json";
-import { Connection } from "../connections/connecton";
-import { PenTool } from "./pen";
-
-const MapInfo:IMapData = MapJson
-
-type TPinData={
-  x:number
-  y:number
-  rotation:number
-  url:string
-}
-
-interface IMapData{
-  url:string,
-  regions:{
-    difference:{
-      src:{
-        p0:vec2.Vec2,
-        p1:vec2.Vec2,
-        p2:vec2.Vec2
-      },
-      dest:{
-        p0:vec2.Vec2,
-        p1:vec2.Vec2,
-        p2:vec2.Vec2
-      },
-      matrix?:DOMMatrix,
-      inversed?:DOMMatrix
-    },
-    outlines:vec2.Vec2[][]
-  }[]
-}
-
-//変換
-MapInfo.regions.forEach((region) => {
-  const matrix = vec2.calcAffine(
-    region.difference.src,
-    region.difference.dest
-  );
-  region.difference.matrix = matrix
-  region.difference.inversed = matrix.inverse()
-  //region.difference.affine = vec2.calcAffine(region.difference.src,region.difference.dest)
-});
+import "../bookmark";
+import bookmark from "../bookmark";
 
 //位置
-type Point = {
-  x: number;
-  y: number;
-};
 const ORIGIN = Object.freeze({ x: 0, y: 0 });
 
+console.log(location.search);
 const img = new Image();
-img.src = MapInfo.url;
+
 img.referrerPolicy = "no-referrer";
 
-const ping = new Image();
-ping.src = "/ping.png";
+//URLに指定があるなら画像のソースを設定
+const searchParams = new URLSearchParams(location.search);
+if (searchParams.has("url")) {
+  img.src = searchParams.get("url") ?? "";
+}
+
+//セーブマネージャー
+const save = bookmark();
 
 type Props = {
   isFullScreen: boolean;
@@ -79,23 +36,21 @@ const MapCanvas: React.FC<Props> = (props) => {
   const resizeOps = props.isFullScreen ? "none" : "both";
   const mainCanvasRef = useRef<HTMLCanvasElement>(null);
   const divRef = useRef(null);
+  const urlInputRef = useRef<HTMLInputElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const [name, setName] = useState<string>("NameTest");
+  const [bookmarkList, setBookmarkList] = useState<JSX.Element[]>([]);
+  const [inBookmark, setInBookmark] = useState<boolean>(false);
   const size: Size = props.isFullScreen
     ? useWindowSize()
     : useParentSize(divRef);
 
   const [cursor, setCursor] = useState<string>("auto");
 
-  const penToolRef = useRef(new PenTool())
-
   const getContext = (): CanvasRenderingContext2D => {
     const canvas: any = mainCanvasRef.current;
     return canvas.getContext("2d");
   };
-
-  //初期化
-  useEffect(() => {
-    penToolRef.current.onChange = write;
-  }, []);
 
   //スクリーン座標からキャンバス座標に
   function screen2CanvasPos(x: number, y: number) {
@@ -105,14 +60,9 @@ const MapCanvas: React.FC<Props> = (props) => {
       y: y - canvas.offsetTop,
     };
   }
-  //キャンバス座標からイメージ座標へ
-  function canvas2ImagePos(pos: vec2.Vec2) {
-    return vec2.sub(vec2.div(pos, scaleRef.current), offsetRef.current);
-    //return vec2.div(pos,scaleRaw)
-  }
 
   //マウス位置
-  const lastMousePosRef = useRef<Point>(ORIGIN);
+  const lastMousePosRef = useRef<vec2.Vec2>(ORIGIN);
   const inDragRef = useRef<boolean>(false);
 
   //マウス移動
@@ -135,12 +85,6 @@ const MapCanvas: React.FC<Props> = (props) => {
         inDragRef.current = false;
         setCursor("auto");
       }
-
-      //ドロー
-      if(event.buttons&0b010){
-        if(penToolRef.current.stroke(canvas2ImagePos(currentMousePos)))
-          write();
-      }
     },
     []
   );
@@ -148,50 +92,19 @@ const MapCanvas: React.FC<Props> = (props) => {
   //クリック
   const handleMouseDown = useCallback(
     (event: React.MouseEvent<HTMLCanvasElement>) => {
-
       event.preventDefault();
-      screen2CanvasPos(event.pageX, event.pageY);
-      const mousePos = canvas2ImagePos(
-        screen2CanvasPos(event.clientX, event.clientY)
-      );
-
       if (event.buttons & 0b101) {
         inDragRef.current = true;
         setCursor("move");
-      }else if(event.buttons & 0b010){
-        penToolRef.current.start()
-
-        const data = {
-          ops:"move",
-          x:mousePos.x,
-          y:mousePos.y,
-        }
-        Connection.send("move",data)
       }
-
-      const isHit = MapInfo.regions[0].outlines.some((outline) =>
-        outline.every((p0, i) => {
-          const p1 = outline[(outline.length + i + 1) % outline.length];
-          return 0 < vec2.cross3(p0, p1, mousePos);
-        })
-      );
-
-      //httpTest()
     },
     []
   );
   const handleMouseUp = useCallback(
     (event: React.MouseEvent<HTMLCanvasElement>) => {
       inDragRef.current = false;
-    
       setCursor("auto");
       event.preventDefault();
-      
-      //ペンを離す
-      if(event.button==2){
-        penToolRef.current.end()
-      }
-      
     },
     []
   );
@@ -213,84 +126,130 @@ const MapCanvas: React.FC<Props> = (props) => {
     event.preventDefault();
   }
 
+  //初期化
+  useEffect(() => {
+    //読み込み完了時処理
+    img.onload = () => {
+      scaleRef.current = Math.min(
+        mainCanvasRef.current?.width! / img.width,
+        mainCanvasRef.current?.height! / img.height
+      );
+      offsetRef.current.x =
+        mainCanvasRef.current?.width! - img.width * scaleRef.current;
+      offsetRef.current.x /= scaleRef.current * 2;
+      offsetRef.current.y =
+        mainCanvasRef.current?.height! - img.height * scaleRef.current;
+      offsetRef.current.y /= scaleRef.current * 2;
+      write();
+    };
+    updateBookmark();
+    if (urlInputRef.current) urlInputRef.current.value = img.src;
+  }, []);
+
   //表示関連
-  const offsetRef = useRef<Point>(ORIGIN);
+  const offsetRef = useRef<vec2.Vec2>({ x: 0, y: 0 });
   const scaleRef = useRef<number>(1);
 
   //canvasに描画
-  const write =()=>{
+  const write = () => {
     const ctx: CanvasRenderingContext2D = getContext();
-    
+
     if (ctx) {
       ctx.resetTransform();
-      ctx.clearRect(0, 0, mainCanvasRef.current?.width!, mainCanvasRef.current?.height!);
+      ctx.fillRect(
+        0,
+        0,
+        mainCanvasRef.current?.width!,
+        mainCanvasRef.current?.height!
+      );
       //ctx.globalAlpha = 0.3
-      ctx.font = "20px serif";
       ctx.scale(scaleRef.current, scaleRef.current);
       ctx.translate(offsetRef.current.x, offsetRef.current.y);
 
-      //setViewportTopLeft((prevVal) => diffPoints(prevVal, offsetDiff));
-      //    isResetRef.current = false;
-
-      const inversed = ctx.getTransform().inverse();
-
-      const zeroPos = canvas2ImagePos(lastMousePosRef.current);
-
-      //console.log(ctx.getTransform(), zeroPos, mainCanvasRef);
-
       ctx.drawImage(img, 0, 0, img.width, img.height);
 
-      penToolRef.current.draw(ctx);
-
-      for (let i = 0; i < 10; i++) {
-        ctx.drawImage(
-          ping,
-          i * 100,
-          0,
-          ping.width / scaleRef.current,
-          ping.height / scaleRef.current
-        );
-      }
-
-      ctx.strokeRect(zeroPos.x, zeroPos.y, 10, 10);
-
-      ctx.strokeStyle = "red";
-
-      MapInfo.regions.forEach((region) => {
-        region.outlines.forEach((outline) => {
-          ctx.beginPath();
-          ctx.moveTo(
-            outline[outline.length - 1].x,
-            outline[outline.length - 1].y
-          );
-          outline.forEach((e) => {
-            ctx.lineTo(e.x, e.y);
-          });
-          ctx.stroke();
-        });
-
-        region.outlines.forEach((outline) => {
-          ctx.beginPath();
-          //const affine = region.difference.affine
-          const affine = region.difference.matrix!;
-          const last = affine.transformPoint(outline[outline.length - 1]);
-          ctx.moveTo(last.x, last.y);
-          outline.forEach((e) => {
-            const pos = affine.transformPoint(e);
-            ctx.lineTo(pos.x, pos.y);
-          });
-          ctx.stroke();
-        });
-      });
-
-      //console.log(offset);
       ctx.save();
     }
-  }
+  };
+
+  //URL変更
+  const setUrl = useCallback((nextUrl: string, nextName: string) => {
+    if (urlInputRef.current) urlInputRef.current.value = nextUrl;
+    setName(nextName);
+    img.src = nextUrl;
+    const url = new URL(window.location.toString());
+    url.searchParams.set("url", nextUrl);
+    //console.log(url)
+    history.pushState("test", "", url.href);
+  }, []);
+
+  //ブックマークに追加
+  const addBookmark = useCallback(() => {
+    save.set(
+      nameInputRef.current?.value ?? "",
+      urlInputRef.current?.value ?? ""
+    );
+    updateBookmark();
+  }, []);
+  //ブックマークから削除
+  const removeBookmark = useCallback(() => {
+    save.remove(nameInputRef.current?.value ?? "");
+    updateBookmark();
+  }, []);
+
+  //左のブックマークを描画
+  const updateBookmark = useCallback(() => {
+    let arr: JSX.Element[] = [];
+    let flag = false;
+    for (const [key, value] of save.getEntris()) {
+      let className = "listElement";
+      if (nameInputRef.current?.value == key) {
+        className += " select";
+        flag = true;
+      }
+      arr.push(
+        <div
+          className={className}
+          key={key}
+          onClick={(e) => {
+            setUrl(value, key);
+          }}
+        >
+          <p>{key}</p>
+        </div>
+      );
+    }
+    setBookmarkList(arr);
+    setInBookmark(flag);
+  }, []);
+
+  useEffect(() => {
+    updateBookmark();
+  }, [name]);
 
   useLayoutEffect(() => {
     write();
   }, [size.width, size.height]);
+
+  //入力制限
+  const handleNameInput = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setName(event.target.value.replace(/[^A-Za-z0-9]/g, ""));
+    },
+    []
+  );
+  const toClipboard = useCallback(() => {
+    navigator.clipboard.writeText(save.toJson());
+  }, []);
+  const fromClipboard = useCallback(async (e:React.ChangeEvent<HTMLInputElement>) => {
+    const event:any = e.nativeEvent
+    if(event.inputType==="insertFromPaste"){
+      
+      save.fromJson(event.data)
+      updateBookmark()
+    }
+    
+  }, []);
 
   return (
     <div
@@ -313,6 +272,8 @@ const MapCanvas: React.FC<Props> = (props) => {
         onContextMenu={handleMenu}
         style={{
           //border: "2px solid #000",
+          position: "fixed",
+          zIndex: -100,
           width: `${size.width}px`,
           height: `${size.height}px`,
           boxSizing: `border-box`,
@@ -321,6 +282,58 @@ const MapCanvas: React.FC<Props> = (props) => {
         width={size.width}
         height={size.height}
       />
+
+      <div
+        style={{
+          display: "flex",
+          width: `fit-content`,
+        }}
+      >
+        <input
+          type="text"
+          ref={urlInputRef}
+          style={{
+            width: `${(size.width ?? 1) * 0.7}px`,
+          }}
+        />
+        <button onClick={() => setUrl(urlInputRef.current?.value ?? "", "")}>
+          Apply
+        </button>
+        <input
+          type="text"
+          ref={nameInputRef}
+          style={{
+            width: "10%",
+          }}
+          value={name}
+          onChange={handleNameInput}
+        />
+        <button onClick={addBookmark}>Save</button>
+        <button
+          onClick={removeBookmark}
+          style={{ visibility: inBookmark ? "visible" : "hidden" }}
+        >
+          Delete
+        </button>
+      </div>
+
+      <div
+        style={{
+          position: "fixed",
+          width: `fit-content`,
+        }}
+      >
+        {bookmarkList}
+        <input
+          type="text"
+          style={{
+            width:40
+          }}
+          value="Import"
+          onChange={fromClipboard}
+        />
+        <button onClick={toClipboard}>Export</button>
+      </div>
     </div>
   );
 };
