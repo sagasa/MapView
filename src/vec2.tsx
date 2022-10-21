@@ -13,11 +13,11 @@ export type Pos3 = {
   p2:Vec2;
 }
 
-console.log(calcAffine({p0:{x:0,y:0},p1:{x:600,y:0},p2:{x:0,y:400}},{p0:{x:200,y:100},p1:{x:719.6152,y:400},p2:{x:0,y:446.4102}}))
+//console.log(calcAffine({p0:{x:0,y:0},p1:{x:600,y:0},p2:{x:0,y:400}},{p0:{x:200,y:100},p1:{x:719.6152,y:400},p2:{x:0,y:446.4102}}))
 
-const test = new DOMMatrix()
-test.scaleSelf(2,2)
-console.log(test)
+//const test = new DOMMatrix()
+//test.scaleSelf(2,2)
+//console.log(test)
 
 export function calcAffine(pos0:Pos3,pos1:Pos3){
   const mat = new Matrix([

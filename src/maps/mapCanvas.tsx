@@ -30,6 +30,7 @@ const save = bookmark();
 
 type Props = {
   isFullScreen: boolean;
+  control?:()=>{}
 };
 
 const MapCanvas: React.FC<Props> = (props) => {
