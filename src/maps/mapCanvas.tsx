@@ -5,6 +5,7 @@ import React, {
   useLayoutEffect,
   useCallback,
   useContext,
+  useReducer,
 } from "react";
 
 import * as vec2 from "../vec2";
@@ -30,8 +31,45 @@ const save = bookmark();
 
 type Props = {
   isFullScreen: boolean;
-  control?:()=>{}
+  control?: () => {};
 };
+
+//表示位置関連
+type ViewInfo = {
+  offset: vec2.Vec2;
+  scale: number;
+};
+
+type EventViewChange = {
+  op: "move" | "scale" | "set";
+  vec?: vec2.Vec2;
+  num?: number;
+};
+
+const dispatcher = (prev: ViewInfo, e: EventViewChange) => {
+  switch (e.op) {
+    case "scale": {
+      let nextScale = prev.scale * (1 - e.num!);
+      let nextOffset = vec2.add(
+        prev.offset,
+        vec2.mul(e.vec!, e.num! / nextScale)
+      );
+      return {offset:nextOffset,scale:nextScale};
+    }
+    case "move":{
+      let nextOffset = vec2.add(
+        prev.offset,
+        vec2.div(e.vec!, prev.scale)
+      )
+      return {...prev,offset:nextOffset};
+    }
+    case "set":{
+      return {offset:e.vec!,scale:e.num!}
+    }
+  }
+
+  return { ...prev };
+}
 
 const MapCanvas: React.FC<Props> = (props) => {
   const resizeOps = props.isFullScreen ? "none" : "both";
@@ -48,19 +86,11 @@ const MapCanvas: React.FC<Props> = (props) => {
 
   const [cursor, setCursor] = useState<string>("auto");
 
-  const getContext = (): CanvasRenderingContext2D => {
-    const canvas: any = mainCanvasRef.current;
-    return canvas.getContext("2d");
-  };
+  //表示
+  const [viewState, applyViewChange] = useReducer(dispatcher,
+    { offset: { x: 0, y: 0 }, scale: 1 }
+  );
 
-  //スクリーン座標からキャンバス座標に
-  function screen2CanvasPos(x: number, y: number) {
-    const canvas: any = mainCanvasRef.current;
-    return {
-      x: x - canvas.offsetLeft,
-      y: y - canvas.offsetTop,
-    };
-  }
 
   //マウス位置
   const lastMousePosRef = useRef<vec2.Vec2>(ORIGIN);
@@ -71,17 +101,12 @@ const MapCanvas: React.FC<Props> = (props) => {
     (event: React.MouseEvent<HTMLCanvasElement>) => {
       //マウスの位置処理
       const lastMousePos = lastMousePosRef.current;
-
       const currentMousePos = screen2CanvasPos(event.pageX, event.pageY);
       lastMousePosRef.current = currentMousePos;
       //差分化
       const mouseDiff = vec2.sub(currentMousePos, lastMousePos);
       if (inDragRef.current && event.buttons & 0b101) {
-        offsetRef.current = vec2.add(
-          offsetRef.current,
-          vec2.div(mouseDiff, scaleRef.current)
-        );
-        write();
+        applyViewChange({op:"move",vec:mouseDiff})
       } else {
         inDragRef.current = false;
         setCursor("auto");
@@ -114,12 +139,7 @@ const MapCanvas: React.FC<Props> = (props) => {
   const handleMouseWheel = useCallback((event: React.WheelEvent) => {
     if (event.deltaY) {
       const scaleDeff = event.deltaY * 0.001;
-      scaleRef.current *= 1 - scaleDeff;
-      offsetRef.current = vec2.add(
-        offsetRef.current,
-        vec2.mul(lastMousePosRef.current, scaleDeff / scaleRef.current)
-      );
-      write();
+      applyViewChange({ op: "scale", num: scaleDeff, vec: lastMousePosRef.current });
     }
   }, []);
 
@@ -127,34 +147,54 @@ const MapCanvas: React.FC<Props> = (props) => {
     event.preventDefault();
   }
 
+  const fitImg = useCallback(()=>{
+    const scale = Math.min(
+      mainCanvasRef.current?.width! / img.width,
+      mainCanvasRef.current?.height! / img.height
+    );
+    const offset = {x:0,y:0}
+    offset.x =
+      mainCanvasRef.current?.width! - img.width * scale;
+    offset.x /= scale * 2;
+    offset.y =
+      mainCanvasRef.current?.height! - img.height * scale;
+      offset.y /= scale * 2;
+    applyViewChange({op:"set",num:scale,vec:offset})
+  },[])
+
   //初期化
   useEffect(() => {
     //読み込み完了時処理
+    if(img){
+      fitImg()
+    }
     img.onload = () => {
-      scaleRef.current = Math.min(
-        mainCanvasRef.current?.width! / img.width,
-        mainCanvasRef.current?.height! / img.height
-      );
-      offsetRef.current.x =
-        mainCanvasRef.current?.width! - img.width * scaleRef.current;
-      offsetRef.current.x /= scaleRef.current * 2;
-      offsetRef.current.y =
-        mainCanvasRef.current?.height! - img.height * scaleRef.current;
-      offsetRef.current.y /= scaleRef.current * 2;
-      write();
+      fitImg()
     };
+
     updateBookmark();
     if (urlInputRef.current) urlInputRef.current.value = img.src;
   }, []);
 
-  //表示関連
-  const offsetRef = useRef<vec2.Vec2>({ x: 0, y: 0 });
-  const scaleRef = useRef<number>(1);
+  //===== 描画系 =====
+  const getContext = (): CanvasRenderingContext2D => {
+    const canvas: any = mainCanvasRef.current;
+    return canvas.getContext("2d");
+  };
 
-  //canvasに描画
-  const write = () => {
+  //スクリーン座標からキャンバス座標に
+  function screen2CanvasPos(x: number, y: number) {
+    const canvas: any = mainCanvasRef.current;
+    return {
+      x: x - canvas.offsetLeft,
+      y: y - canvas.offsetTop,
+    };
+  }
+  
+  //canvas描画
+  useLayoutEffect(() => {
     const ctx: CanvasRenderingContext2D = getContext();
-
+    console.log(viewState.offset, viewState.scale);
     if (ctx) {
       ctx.resetTransform();
       ctx.fillRect(
@@ -164,14 +204,16 @@ const MapCanvas: React.FC<Props> = (props) => {
         mainCanvasRef.current?.height!
       );
       //ctx.globalAlpha = 0.3
-      ctx.scale(scaleRef.current, scaleRef.current);
-      ctx.translate(offsetRef.current.x, offsetRef.current.y);
+      ctx.scale(viewState.scale, viewState.scale);
+      ctx.translate(viewState.offset.x, viewState.offset.y);
 
       ctx.drawImage(img, 0, 0, img.width, img.height);
 
       ctx.save();
     }
-  };
+  }, [viewState,size.width, size.height]);
+
+
 
   //URL変更
   const setUrl = useCallback((nextUrl: string, nextName: string) => {
@@ -228,10 +270,6 @@ const MapCanvas: React.FC<Props> = (props) => {
     updateBookmark();
   }, [name]);
 
-  useLayoutEffect(() => {
-    write();
-  }, [size.width, size.height]);
-
   //入力制限
   const handleNameInput = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -242,15 +280,16 @@ const MapCanvas: React.FC<Props> = (props) => {
   const toClipboard = useCallback(() => {
     navigator.clipboard.writeText(save.toJson());
   }, []);
-  const fromClipboard = useCallback(async (e:React.ChangeEvent<HTMLInputElement>) => {
-    const event:any = e.nativeEvent
-    if(event.inputType==="insertFromPaste"){
-      
-      save.fromJson(event.data)
-      updateBookmark()
-    }
-    
-  }, []);
+  const fromClipboard = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const event: any = e.nativeEvent;
+      if (event.inputType === "insertFromPaste") {
+        save.fromJson(event.data);
+        updateBookmark();
+      }
+    },
+    []
+  );
 
   return (
     <div
@@ -328,7 +367,7 @@ const MapCanvas: React.FC<Props> = (props) => {
         <input
           type="text"
           style={{
-            width:40
+            width: 40,
           }}
           value="Import"
           onChange={fromClipboard}
