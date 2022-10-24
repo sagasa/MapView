@@ -1,6 +1,6 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import AppRoot from "./components/root";
+import {AppRoot} from "./components/root";
 
 import MapCanvas from "./maps/mapCanvas";
 

@@ -1,4 +1,3 @@
-import { createContext } from "react";
 
 type WSState = `Disconnected` | `Connecting` | `Connected`;
 

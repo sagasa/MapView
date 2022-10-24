@@ -1,4 +1,3 @@
-import ReactDOM from "react-dom";
 import React, {
   useEffect,
   useState,
@@ -11,7 +10,5 @@ function WSConnection() {
   const [state, setState] = useState<string>("disconnect");
   return <div>Hello</div>;
 }
-
-
 
 export default WSConnection;
