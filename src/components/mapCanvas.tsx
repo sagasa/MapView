@@ -10,6 +10,8 @@ import React, {
 
 
 import * as vec2 from "../vec2";
+import { DispatcherHolder } from "../utils";
+import { PenTool } from "../maps/pen";
 
 //位置
 const ORIGIN = Object.freeze({ x: 0, y: 0 });
@@ -18,33 +20,6 @@ const ORIGIN = Object.freeze({ x: 0, y: 0 });
 //  dispatcher?: React.Dispatch<T>;
 //};
 
-type EventBase = {
-  op: any;
-};
-
-type Dispatcher = {
-  accepts:string[]
-  func:(event:EventBase)=>void
-}
-
-export class DispatcherHolder{
-  dispatchers:Dispatcher[] = []
-
-  constructor(){
-
-  }
-  register(func:(event:EventBase)=>void,accepts:string[]){
-    this.dispatchers.push({accepts:accepts,func:func})
-  }
-  dispatch(event:EventBase) {
-    for(const dispatcher of this.dispatchers){
-      if(dispatcher.accepts.includes(event.op)){
-        dispatcher.func(event)
-        break
-      }
-    }
-  }
-}
 
 type Props = {
   url: string;
@@ -69,12 +44,13 @@ const MapCanvas: React.FC<Props> = (props) => {
   const imgRef = useRef(new Image());
   const size: Size = useWindowSize();
 
+  const drawRef = useRef(new PenTool())
+
   const [cursor, setCursor] = useState<string>("auto");
 
   //命令ディスパッチャーを登録
   useEffect(() => {
     props.control.register(applyViewChange,["move" , "scale" , "set"]);
-    console.log("reg");
     props.control.register((e)=>{
       fitImg()
     },["reset"])

@@ -11,30 +11,14 @@ import React, {
 import * as vec2 from "../vec2";
 import "../bookmark";
 import bookmark from "../bookmark";
-import MapCanvas, {EventViewChange,DispatcherHolder} from "../maps/mapCanvas";
+import MapCanvas, {EventViewChange} from "./mapCanvas";
+import {DispatcherHolder} from "../utils"
 
 import URLBar from "./urlbar";
 import BookMarkBar from "./bookmarkbar";
-
-let Mary: 'Cat' | 'Dog' | 'Rabbit' = 'Cat';
-
-const test = (fun: (op: 'A' | 'B') => {}) => {
-    fun("A");
-}
-
-type EventTest = {
-    op: string
-}
+import DrawTools from "./drawTools";
 
 
-type StateTest = {
-    a: number
-    b: number
-}
-
-type EventProvider<T> = {
-    dispatch?: React.Dispatch<T>
-}
 
 const eventMap = new Map<string, (val: string) => void>()
 
@@ -46,11 +30,6 @@ const postRootData = (op: 'url'|'reset', data: string) => {
 export default postRootData
 
 export const AppRoot: React.FC = () => {
-
-    const [state, dispatch] = useReducer((state: StateTest, action: EventTest) => { return { a: 2, b: 3 } }, { a: 1, b: 2 })
-
-    const provider: EventProvider<EventTest> = {}
-    provider.dispatch = dispatch
 
     const mapControllerRef = useRef<DispatcherHolder>(new DispatcherHolder())
     const [url, setUrl] = useState("")
@@ -72,8 +51,6 @@ export const AppRoot: React.FC = () => {
         history.pushState("test", "", next.href);
     },[url])
 
-    console.log("AAAAAAAAAA", mapControllerRef.current)
-
     const ref = useRef()
 
     return (<div
@@ -84,5 +61,6 @@ export const AppRoot: React.FC = () => {
         <URLBar url={url}></URLBar>
         <BookMarkBar url={url}></BookMarkBar>
         <MapCanvas url={url} control={mapControllerRef.current}></MapCanvas>
+        <DrawTools></DrawTools>
     </div>)
 }

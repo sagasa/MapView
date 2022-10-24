@@ -44,7 +44,7 @@ const BookMarkBar: React.FC<Props> = (props:Props) => {
 
     useEffect(() => {
         updateBookmark();
-    }, [name]);
+    }, [name,props.url]);
 
     //入力制限
     const handleNameInput = useCallback(
@@ -73,7 +73,7 @@ const BookMarkBar: React.FC<Props> = (props:Props) => {
                     className={className}
                     key={key}
                     onClick={() => {
-                        if(nameInputRef.current?.value == key)
+                        if(nameInputRef.current?.value == key&&props.url == value)
                             postRootData("reset","")
                         else
                             postRootData("url",value)
@@ -89,7 +89,7 @@ const BookMarkBar: React.FC<Props> = (props:Props) => {
         }
         setBookmarkList(arr);
         setInBookmark(flag);
-    }, []);
+    }, [props.url]);
 
     const toClipboard = useCallback(() => {
         navigator.clipboard.writeText(save.toJson());
