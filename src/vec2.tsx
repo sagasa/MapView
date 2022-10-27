@@ -103,9 +103,9 @@ export function cross(a: Vec2, b: Vec2) {
 }
 
 //dest無しならvを改変
-export function norm(v: Vec2, dest: Vec2) {
+export function norm(v: Vec2, dest: Vec2|undefined=undefined) {
   const l = Math.sqrt(v.x * v.x + v.y * v.y);
-  if (dest == null) {
+  if (dest == undefined) {
     v.x /= l;
     v.y /= l;
     return v;
@@ -113,4 +113,22 @@ export function norm(v: Vec2, dest: Vec2) {
   dest.x = v.x / l;
   dest.y = v.y / l;
   return dest;
+}
+
+export function dist(a: Vec2, b: Vec2){
+  return length(sub(a,b))
+}
+
+export function length(a: Vec2){
+  return Math.sqrt(a.x*a.x+a.y*a.y)
+}
+
+export function avg(...vec: Vec2[]){
+  let x=0,y=0
+  vec.forEach(v=>{x+=v.x;y+=v.y})
+  return { x: x/vec.length, y: y/vec.length}
+}
+
+export function rote90(a: Vec2){
+  return { x: a.y, y: -a.x};
 }

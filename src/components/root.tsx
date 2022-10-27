@@ -12,22 +12,28 @@ import * as vec2 from "../vec2";
 import "../bookmark";
 import bookmark from "../bookmark";
 import MapCanvas, {EventViewChange} from "./mapCanvas";
-import {DispatcherHolder} from "../utils"
+import {DispatcherHolder,EventBase} from "../utils"
 
 import URLBar from "./urlbar";
 import BookMarkBar from "./bookmarkbar";
 import DrawTools from "./drawTools";
 
 
-
-const eventMap = new Map<string, (val: string) => void>()
-
-const postRootData = (op: 'url'|'reset', data: string) => {
-    eventMap.get(op)?.(data)
+const postRootData = (op:string,event:any={}) => {
+    rootDispacher.dispatch({op:op,...event})
 }
 
+const rootDispacher = new DispatcherHolder()
+const subDispacher = new DispatcherHolder()
+
+rootDispacher.registerHolder(subDispacher)
 
 export default postRootData
+
+type EventSetUrl = {
+    op:string
+    url?:string
+}
 
 export const AppRoot: React.FC = () => {
 
@@ -41,8 +47,7 @@ export const AppRoot: React.FC = () => {
         if (searchParams.has("url")) {
             setUrl(searchParams.get("url") ?? "");
         }
-        eventMap.set("url", setUrl)
-        eventMap.set("reset",()=>mapControllerRef.current.dispatch({op:"reset"}))
+        rootDispacher.registerFunc((e:EventSetUrl)=>setUrl(e?.url!!),["url"])
     }, [])
 
     useEffect(()=>{
@@ -60,7 +65,7 @@ export const AppRoot: React.FC = () => {
     >
         <URLBar url={url}></URLBar>
         <BookMarkBar url={url}></BookMarkBar>
-        <MapCanvas url={url} control={mapControllerRef.current}></MapCanvas>
+        <MapCanvas url={url} control={rootDispacher}></MapCanvas>
         <DrawTools></DrawTools>
     </div>)
 }

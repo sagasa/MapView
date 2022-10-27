@@ -8,7 +8,6 @@ import React, {
   useReducer,
 } from "react";
 
-
 import * as vec2 from "../vec2";
 import { DispatcherHolder } from "../utils";
 import { PenTool } from "../maps/pen";
@@ -19,7 +18,6 @@ const ORIGIN = Object.freeze({ x: 0, y: 0 });
 //export type DispatcherHolder<T> = {
 //  dispatcher?: React.Dispatch<T>;
 //};
-
 
 type Props = {
   url: string;
@@ -32,7 +30,6 @@ type ViewInfo = {
   scale: number;
 };
 
-
 export type EventViewChange = {
   op: "move" | "scale" | "set" | "reset";
   vec?: vec2.Vec2;
@@ -44,20 +41,20 @@ const MapCanvas: React.FC<Props> = (props) => {
   const imgRef = useRef(new Image());
   const size: Size = useWindowSize();
 
-  const drawRef = useRef(new PenTool())
+  const drawRef = useRef(new PenTool());
+  const [drawCount, updateDraw] = useReducer((prev: number) => prev + 1, 0);
 
   const [cursor, setCursor] = useState<string>("auto");
 
   //命令ディスパッチャーを登録
   useEffect(() => {
-    props.control.register(applyViewChange,["move" , "scale" , "set"]);
-    props.control.register((e)=>{
-      fitImg()
-    },["reset"])
+    props.control.registerFunc(applyViewChange, ["move", "scale", "set"]);
+    props.control.registerFunc((e) => fitImg(), ["reset"]);
 
   }, [props.control]);
 
   //表示
+  const lastViewState = useRef<ViewInfo>({ offset: { x: 0, y: 0 }, scale: 1 });
   const [viewState, applyViewChange] = useReducer(
     (prev: ViewInfo, e: EventViewChange) => {
       switch (e.op) {
@@ -82,6 +79,10 @@ const MapCanvas: React.FC<Props> = (props) => {
     },
     { offset: { x: 0, y: 0 }, scale: 1 }
   );
+  //現在有効な値を保存
+  useEffect(() => {
+    lastViewState.current = viewState;
+  }, [viewState]);
 
   //マウス位置
   const lastMousePosRef = useRef<vec2.Vec2>(ORIGIN);
@@ -96,11 +97,18 @@ const MapCanvas: React.FC<Props> = (props) => {
       lastMousePosRef.current = currentMousePos;
       //差分化
       const mouseDiff = vec2.sub(currentMousePos, lastMousePos);
-      if (inDragRef.current && event.buttons & 0b101) {
+      if (inDragRef.current && event.buttons & 0b110) {
         applyViewChange({ op: "move", vec: mouseDiff });
       } else {
         inDragRef.current = false;
         setCursor("auto");
+      }
+
+      if (event.buttons & 0b001) {
+        //ペンを動かす
+        if (drawRef.current.stroke(canvas2ImagePos(currentMousePos))) {
+          updateDraw();
+        }
       }
     },
     []
@@ -109,10 +117,17 @@ const MapCanvas: React.FC<Props> = (props) => {
   //クリック
   const handleMouseDown = useCallback(
     (event: React.MouseEvent<HTMLCanvasElement>) => {
+      mainCanvasRef.current?.focus();
       event.preventDefault();
-      if (event.buttons & 0b101) {
+      if (event.buttons & 0b110) {
         inDragRef.current = true;
         setCursor("move");
+      } else if (event.buttons & 0b001) {
+        //ペンを下ろす
+        drawRef.current.start(
+          canvas2ImagePos(screen2CanvasPos(event.pageX, event.pageY))
+        );
+        updateDraw();
       }
     },
     []
@@ -122,6 +137,11 @@ const MapCanvas: React.FC<Props> = (props) => {
       inDragRef.current = false;
       setCursor("auto");
       event.preventDefault();
+      //ペンを離す
+      if (event.button == 0) {
+        drawRef.current.end();
+        updateDraw();
+      }
     },
     []
   );
@@ -143,7 +163,7 @@ const MapCanvas: React.FC<Props> = (props) => {
   }
 
   const fitImg = useCallback(() => {
-    const img = imgRef.current
+    const img = imgRef.current;
     const scale = Math.min(
       mainCanvasRef.current?.width! / img.width,
       mainCanvasRef.current?.height! / img.height
@@ -156,6 +176,25 @@ const MapCanvas: React.FC<Props> = (props) => {
     applyViewChange({ op: "set", num: scale, vec: offset });
   }, []);
 
+  //キーボード
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLCanvasElement>) => {
+      if (event.key == "Shift") {
+        drawRef.current.line = true;
+        updateDraw();
+      }
+    },
+    []
+  );
+  const handleKeyUp = useCallback(
+    (event: React.KeyboardEvent<HTMLCanvasElement>) => {
+      if (event.key == "Shift") {
+        drawRef.current.line = false;
+        updateDraw();
+      }
+    },
+    []
+  );
 
   //===== 描画系 =====
   const getContext = (): CanvasRenderingContext2D => {
@@ -164,18 +203,26 @@ const MapCanvas: React.FC<Props> = (props) => {
   };
 
   //スクリーン座標からキャンバス座標に
-  function screen2CanvasPos(x: number, y: number) {
+  const screen2CanvasPos = useCallback((x: number, y: number) => {
     const canvas: any = mainCanvasRef.current;
     return {
       x: x - canvas.offsetLeft,
       y: y - canvas.offsetTop,
     };
-  }
+  }, []);
+
+  //キャンバス座標からイメージ座標へ
+  const canvas2ImagePos = useCallback((pos: vec2.Vec2) => {
+    return vec2.sub(
+      vec2.div(pos, lastViewState.current.scale),
+      lastViewState.current.offset
+    );
+  }, []);
 
   //canvas描画
   useLayoutEffect(() => {
     const ctx: CanvasRenderingContext2D = getContext();
-    const img = imgRef.current
+    const img = imgRef.current;
     if (ctx) {
       ctx.resetTransform();
       ctx.fillRect(
@@ -190,44 +237,49 @@ const MapCanvas: React.FC<Props> = (props) => {
 
       ctx.drawImage(img, 0, 0, img.width, img.height);
 
+      drawRef.current.draw(ctx);
+
       ctx.save();
     }
-  }, [viewState, size.width, size.height]);
+  }, [viewState, size.width, size.height, drawCount]);
 
   //URL変更
   useLayoutEffect(() => {
-    const next = new Image()
+    const next = new Image();
     next.referrerPolicy = "no-referrer";
-    next.src = props.url
-    next.onload= () => {
-      imgRef.current = next
+    next.src = props.url;
+    next.onload = () => {
+      imgRef.current = next;
       fitImg();
     };
   }, [props.url]);
 
-  const height = (size.height!!-(mainCanvasRef.current?.offsetTop??0))
+  const height = size.height!! - (mainCanvasRef.current?.offsetTop ?? 0);
   return (
-      <canvas
-        className="canvas"
-        ref={mainCanvasRef}
-        onMouseMove={handleMouseMove}
-        onMouseDown={handleMouseDown}
-        onMouseUp={handleMouseUp}
-        onWheel={handleMouseWheel}
-        onContextMenu={handleMenu}
-        style={{
-          display:"block",
-          //border: "2px solid #000",
-          position: "fixed",
-          zIndex: -100,
-          width: `${size.width}px`,
-          height: `${height}px`,
-          //boxSizing: `border-box`,
-          cursor: `${cursor}`,
-        }}
-        width={size.width}
-        height={height}
-      />
+    <canvas
+      className="canvas"
+      ref={mainCanvasRef}
+      tabIndex={0}
+      onMouseMove={handleMouseMove}
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
+      onWheel={handleMouseWheel}
+      onKeyDown={handleKeyDown}
+      onKeyUp={handleKeyUp}
+      onContextMenu={handleMenu}
+      style={{
+        display: "block",
+        //border: "2px solid #000",
+        position: "fixed",
+        zIndex: -100,
+        width: `${size.width}px`,
+        height: `${height}px`,
+        //boxSizing: `border-box`,
+        cursor: `${cursor}`,
+      }}
+      width={size.width}
+      height={height}
+    />
   );
 };
 

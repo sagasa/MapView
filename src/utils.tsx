@@ -1,26 +1,45 @@
 
-type EventBase = {
+export type EventBase = {
     op: any;
   };
 
 type Dispatcher = {
   accepts: string[];
-  func: (event: EventBase) => void;
+  dispatch: (event: EventBase) => void;
 };
 
 export class DispatcherHolder {
-  dispatchers: Dispatcher[] = [];
+  private parent?:DispatcherHolder
+  accepts:string[] = [];
+  map:Map<string,Dispatcher> = new Map()
 
   constructor() {}
-  register(func: (event: EventBase) => void, accepts: string[]) {
-    this.dispatchers.push({ accepts: accepts, func: func });
+  //関数単体を登録
+  registerFunc(func: (event: EventBase) => void, accepts: string[]) {
+    this.register({ accepts: accepts, dispatch: func })
   }
-  dispatch(event: EventBase) {
-    for (const dispatcher of this.dispatchers) {
-      if (dispatcher.accepts.includes(event.op)) {
-        dispatcher.func(event);
-        break;
-      }
+
+  registerHolder(dispatcher:DispatcherHolder){
+    if(dispatcher.parent){
+      console.log("error holder is already registered")
     }
+    dispatcher.parent = this
+  }
+
+  private register(dispatcher:Dispatcher,ops?:string[]){
+    const accepts = ops?ops:dispatcher.accepts
+    if(this.accepts.some(op=>accepts.includes(op))){
+      console.log("error op duplicated",this.accepts.find(op=>accepts.includes(op)))
+    }
+    //親に登録
+    if(this.parent){
+      this.parent.register(dispatcher,accepts)
+    }
+    this.accepts.push(...accepts)
+    accepts.forEach(op=>this.map.set(op,dispatcher))
+  }
+
+  dispatch(event: EventBase) {
+    this.map.get(event.op)?.dispatch(event)
   }
 }

@@ -74,9 +74,9 @@ const BookMarkBar: React.FC<Props> = (props:Props) => {
                     key={key}
                     onClick={() => {
                         if(nameInputRef.current?.value == key&&props.url == value)
-                            postRootData("reset","")
+                            postRootData("reset")
                         else
-                            postRootData("url",value)
+                            postRootData("url",{url:value})
                         setName(key)
                     }}
                     style={{

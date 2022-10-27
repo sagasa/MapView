@@ -38,13 +38,30 @@ button.select{
 
 
 .pallet{
-    margin: 3px;
+    margin: 0px;
     display:inline;
     float:left;
-    background-image: url('./icon.png');
     width: 32px;
     height: 32px;
-    border: 1px solid #2468a0;
+    outline: 1px solid #555;
+    outline-offset: -1px;
+}
+
+.pallet.select{
+    outline: 2px solid #2468a0;
+    outline-offset: -2px;
+    background-color: #556;
+}
+.pallet.selectColor{
+    outline: 5px solid #b0d5f3;
+    outline-offset: -5px;
+    background-color: #556;
+}
+
+.palletHolder{
+    margin: 0px;
+    width: 128px;
+    height: 32px;
 }
 
 .right {
@@ -53,6 +70,7 @@ button.select{
 }
 
 .hide {
+    position: fixed;
     visibility: hidden;
 }
 
