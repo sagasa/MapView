@@ -50,6 +50,7 @@ const MapCanvas: React.FC<Props> = (props) => {
   useEffect(() => {
     props.control.registerFunc(applyViewChange, ["move", "scale", "set"]);
     props.control.registerFunc((e) => fitImg(), ["reset"]);
+    props.control.registerHolder(drawRef.current.holder);
 
   }, [props.control]);
 

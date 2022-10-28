@@ -10,6 +10,8 @@ import React, {
 } from "react";
 import postRootData from "./root"
 
+import InputColor from "./inputColor"
+
 type Props = {};
 
 const test = (event: React.MouseEvent<HTMLDivElement>) => {
@@ -70,9 +72,12 @@ const DrawTools: React.FC<Props> = (props) => {
       ],[])
 
   const [current, setCurrent] = useState("move");
-  const [isDraw, setIsDraw] = useState(false);
-  const [colorIndex,setColorIndex] = useState("#FF4236")
 
+  const [colorIndex,setColorIndex] = useState("#FF4236")
+  const [color,setColor] = useState("#FF4236")
+  const [width,setWidth] = useState(5)
+
+  //選択状態を反映したメニューアイテムを作成
   const makeMenuItem = (element: MenuElement) => {
     return (
       <div
@@ -80,7 +85,7 @@ const DrawTools: React.FC<Props> = (props) => {
         className={"pallet"+(current==element.name?" select":"")}
         onClick={(e) => {
           setCurrent(element.name);
-          element.func?.();
+          postRootData("tool",{tool:element.name})
         }}
         style={{ backgroundImage: `url(${element.image})` }}
       ></div>
@@ -98,32 +103,22 @@ const DrawTools: React.FC<Props> = (props) => {
 
   const makeColor = (list: string[]) => {
     return list.map(val=>
-        <input
-            key = {val}  
-            className={"pallet"+(colorIndex==val?" selectColor":"")}
-          
-          type="color"
+        <InputColor
+          key = {val}
           defaultValue={val}
-          onClick={(e) => {
-            
-            const target:any = e.target
-            if(colorIndex!=val){
-                e.preventDefault()
-                setColorIndex(val)
-                postRootData("color",{color:target.value})
-            }
-        }}
-        ></input>
+          select={colorIndex==val}
+          onChange={(color,index)=>{
+            setColorIndex(index)
+            setColor(color)
+            postRootData("color",{color:color})
+          }}
+        ></InputColor>
     )
   };
 
   useEffect(() => {
     console.log(current);
   }, [current]);
-
-  useEffect(() => {
-    console.log(colorIndex);
-  }, [colorIndex]);
 
   return (
     <div
@@ -136,13 +131,18 @@ const DrawTools: React.FC<Props> = (props) => {
       <div className="palletHolder">{topMenu.map((e) => makeMenuItem(e))}</div>
       <div className={"palletHolder"+(drawName.includes(current)?"":" hide")}>
         <div className="pallet" style={{ color: "white" }}>
-          Hi
+          <div style={{position:"relative",height:width,width:width,top:16-width/2,left:16-width/2,background:color}}></div>
         </div>
         <input
           className="pallet"
           type="range"
           min={1}
-          max={10}
+          max={20}
+          value={width}
+          onChange={e=>{
+            postRootData("lineWidth",{width:parseInt(e.target.value)})
+            setWidth(parseInt(e.target.value))
+          }}
           style={{ width: "96px" }}
         ></input>
       </div>

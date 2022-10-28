@@ -11,19 +11,24 @@ type Dispatcher = {
 export class DispatcherHolder {
   private parent?:DispatcherHolder
   accepts:string[] = [];
-  map:Map<string,Dispatcher> = new Map()
+  private map:Map<string,Dispatcher> = new Map()
+  private name:string
 
-  constructor() {}
+  constructor(name:string) {
+    this.name = name
+  }
   //関数単体を登録
   registerFunc(func: (event: EventBase) => void, accepts: string[]) {
     this.register({ accepts: accepts, dispatch: func })
   }
 
+  //ホルダーを登録する場所は親の設定を
   registerHolder(dispatcher:DispatcherHolder){
     if(dispatcher.parent){
       console.log("error holder is already registered")
     }
     dispatcher.parent = this
+    this.register(dispatcher,dispatcher.accepts)
   }
 
   private register(dispatcher:Dispatcher,ops?:string[]){
@@ -40,6 +45,9 @@ export class DispatcherHolder {
   }
 
   dispatch(event: EventBase) {
+    if(!this.map.has(event.op)){
+      console.log("event not found",event,this.name,this.map,this.map.has(event.op))
+    }
     this.map.get(event.op)?.dispatch(event)
   }
 }

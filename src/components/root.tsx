@@ -23,10 +23,7 @@ const postRootData = (op:string,event:any={}) => {
     rootDispacher.dispatch({op:op,...event})
 }
 
-const rootDispacher = new DispatcherHolder()
-const subDispacher = new DispatcherHolder()
-
-rootDispacher.registerHolder(subDispacher)
+const rootDispacher = new DispatcherHolder("root")
 
 export default postRootData
 
@@ -37,7 +34,6 @@ type EventSetUrl = {
 
 export const AppRoot: React.FC = () => {
 
-    const mapControllerRef = useRef<DispatcherHolder>(new DispatcherHolder())
     const [url, setUrl] = useState("")
 
     //初期化

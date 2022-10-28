@@ -1,5 +1,5 @@
 import * as vec2 from "../vec2";
-import {DispatcherHolder} from "../utils"
+import {DispatcherHolder, EventBase} from "../utils"
 
 type TDrawData = {
   id: string;
@@ -8,16 +8,47 @@ type TDrawData = {
   stroke: vec2.Vec2[][];
 };
 
+type EventColorSet= EventBase&{
+  color?:string
+}
+type EventToolSet=EventBase&{
+  tool?:string
+}
+type EventWidthSet=EventBase&{
+  width?:number
+}
 
 export class PenTool {
 
-  holder :DispatcherHolder = new DispatcherHolder()
+  holder :DispatcherHolder = new DispatcherHolder("pen")
 
-  current: TDrawData | null = null;
-  mode: "none" | "line" | "arrow" = "none";
-  all = new Map<string, TDrawData>();
+  private current: TDrawData | null = null;
+
+
+  private mode: "none" | "line" | "arrow" = "none";
+  private color:string="#FF4236"
+  private width:number=5
+  
+  private all = new Map<string, TDrawData>();
   line = false;
-  arrow = false;
+
+  constructor(){
+    this.holder.registerFunc((e:EventColorSet)=>{
+      this.color = e.color??"#FFFFFF"
+    },["color"])
+    this.holder.registerFunc((e:EventToolSet)=>{
+      if(e.tool==="pen"){
+        this.mode="line"
+      }else if(e.tool==="arrow"){
+        this.mode="arrow"
+      }else{
+        this.mode="none"
+      }
+    },["tool"])
+    this.holder.registerFunc((e:EventWidthSet)=>{
+      this.width = e.width??5
+    },["lineWidth"])
+  }
 
   onChange = () => {};
 
@@ -25,8 +56,8 @@ export class PenTool {
     if (this.mode != "none")
       this.current = {
         id: "",
-        color: "#FF0000",
-        width: 2,
+        color: this.color,
+        width: this.width,
         stroke: [[pos]],
       };
   };
@@ -69,7 +100,7 @@ export class PenTool {
           const arr = this.current.stroke[0];
           this.current.stroke[0] = [arr[0], arr[arr.length - 1]];
         }
-        if (this.arrow) {
+        if (this.mode=="arrow") {
           //矢印付与
           const arr = this.current.stroke[0];
           const origin =
@@ -79,7 +110,7 @@ export class PenTool {
           const pos = arr[arr.length - 1];
           const vec = vec2.mul(
             vec2.norm(vec2.sub(origin, arr[arr.length - 1])),
-            5
+            this.current.width*5
           );
           const rote = vec2.mul(vec2.rote90(vec), 1);
 
@@ -109,7 +140,7 @@ export class PenTool {
       ctx.rect(arr[0].x - 0.5, arr[0].y - 0.5, 1, 1);
     }
 
-    ctx.lineWidth = 0.5; //data.width;
+    ctx.lineWidth = data.width;
     data.stroke.forEach((arr) => {
       arr.forEach((p, i) => {
         if (i == 0) {
@@ -128,14 +159,14 @@ export class PenTool {
       if (this.line) {
         ctx.beginPath();
         ctx.strokeStyle = this.current.color;
-        ctx.lineWidth = 0.5; //data.width;
+        ctx.lineWidth = this.current.width;
 
         ctx.moveTo(arr[0].x, arr[0].y);
         ctx.lineTo(arr[arr.length - 1].x, arr[arr.length - 1].y);
         ctx.stroke();
-      } else PenTool.drawStroke(ctx, this.current);
+      } else {PenTool.drawStroke(ctx, this.current)}
 
-      if (1 < arr.length && this.arrow) {
+      if (1 < arr.length && this.mode=="arrow") {
         //直線なら始点を 3以上なら最後2,3の平均でなければ最後から2番目
         const origin = this.line
           ? arr[0]
@@ -143,7 +174,7 @@ export class PenTool {
           ? vec2.avg(arr[arr.length - 2], arr[arr.length - 3])
           : arr[arr.length - 2];
         const pos = arr[arr.length - 1];
-        const vec = vec2.mul(vec2.norm(vec2.sub(origin, pos)), 5);
+        const vec = vec2.mul(vec2.norm(vec2.sub(origin, pos)), this.current.width*5);
         const rote = vec2.mul(vec2.rote90(vec), 1);
 
         const p0 = vec2.add(vec2.add(pos, vec), rote);
