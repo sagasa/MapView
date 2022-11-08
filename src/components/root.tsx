@@ -11,30 +11,29 @@ import React, {
 import * as vec2 from "../vec2";
 import "../bookmark";
 import bookmark from "../bookmark";
-import MapCanvas, {EventViewChange} from "./mapCanvas";
-import {DispatcherHolder,EventBase} from "../utils"
+import MapCanvas, { EventViewChange } from "./mapCanvas";
+import { DispatcherHolder, EventBase } from "../utils";
 
 import URLBar from "./urlbar";
 import BookMarkBar from "./bookmarkbar";
 import DrawTools from "./drawTools";
+import MenuTest from "./menu";
 
+const postRootData = (op: string, event: any = {}) => {
+    rootDispacher.dispatch({ op: op, ...event });
+};
 
-const postRootData = (op:string,event:any={}) => {
-    rootDispacher.dispatch({op:op,...event})
-}
+const rootDispacher = new DispatcherHolder("root");
 
-const rootDispacher = new DispatcherHolder("root")
-
-export default postRootData
+export default postRootData;
 
 type EventSetUrl = {
-    op:string
-    url?:string
-}
+    op: string;
+    url?: string;
+};
 
 export const AppRoot: React.FC = () => {
-
-    const [url, setUrl] = useState("")
+    const [url, setUrl] = useState("");
 
     //初期化
     useEffect(() => {
@@ -43,25 +42,31 @@ export const AppRoot: React.FC = () => {
         if (searchParams.has("url")) {
             setUrl(searchParams.get("url") ?? "");
         }
-        rootDispacher.registerFunc((e:EventSetUrl)=>setUrl(e?.url!!),["url"])
-    }, [])
+        rootDispacher.registerFunc(
+            (e: EventSetUrl) => setUrl(e?.url!!),
+            ["url"]
+        );
+    }, []);
 
-    useEffect(()=>{
+    useEffect(() => {
         const next = new URL(window.location.toString());
         next.searchParams.set("url", url);
         history.pushState("test", "", next.href);
-    },[url])
+    }, [url]);
 
-    const ref = useRef()
+    const ref = useRef();
 
-    return (<div
-        style={{
-            overflow: "hidden",
-        }}
-    >
-        <URLBar url={url}></URLBar>
-        <BookMarkBar url={url}></BookMarkBar>
-        <MapCanvas url={url} control={rootDispacher}></MapCanvas>
-        <DrawTools></DrawTools>
-    </div>)
-}
+    return (
+        <div
+            style={{
+                overflow: "hidden",
+            }}
+        >
+            <URLBar url={url}></URLBar>
+            <BookMarkBar url={url}></BookMarkBar>
+            <MapCanvas url={url} control={rootDispacher}></MapCanvas>
+            <DrawTools></DrawTools>
+            <MenuTest></MenuTest>
+        </div>
+    );
+};

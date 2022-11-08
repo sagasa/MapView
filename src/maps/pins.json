@@ -1,0 +1,32 @@
+[
+    [
+        { "name": "penm", "image": "./penm.png" },
+        { "name": "arrowm", "image": "./arrowm.png" },
+        { "name": "undo", "image": "./undo.png" },
+        { "name": "redo", "image": "./redo.png" }
+    ],
+    [
+        { "name": "allive0m", "image": "./allive0m.png" },
+        { "name": "death0m", "image": "./death0m.png" },
+        { "name": "backpackm", "image": "./backpackm.png" },
+        { "name": "unknownm", "image": "./unknownm.png" }
+    ],
+    [
+        { "name": "allive0", "image": "./allive0.png" },
+        { "name": "allive1", "image": "./allive1.png" },
+        { "name": "allive2", "image": "./allive2.png" },
+        { "name": "allive3", "image": "./allive3.png" }
+    ],
+    [
+        { "name": "death0", "image": "./death0.png" },
+        { "name": "death1", "image": "./death1.png" },
+        { "name": "death2", "image": "./death2.png" },
+        { "name": "death3", "image": "./death3.png" }
+    ],
+    [
+        { "name": "grenade", "image": "./grenade.png" },
+        { "name": "gun", "image": "./gun.png" },
+        { "name": "unknown", "image": "./unknown.png" },
+        { "name": "backpack", "image": "./backpack.png" }
+    ]
+]

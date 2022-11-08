@@ -10,11 +10,11 @@ import React, {
 
 import "../bookmark";
 import bookmark from "../bookmark";
-import postRootData from "./root"
+import postRootData from "./root";
 
 type Props = {
-    url: string
-}
+    url: string;
+};
 
 const URLBar: React.FC<Props> = (props) => {
     const urlInputRef = useRef<HTMLInputElement>(null);
@@ -28,10 +28,9 @@ const URLBar: React.FC<Props> = (props) => {
         history.pushState("test", "", url.href);
     }, []);
 
-    useEffect(()=>{
-        if(urlInputRef.current)
-            urlInputRef.current.value = props.url
-    },[props.url])
+    useEffect(() => {
+        if (urlInputRef.current) urlInputRef.current.value = props.url;
+    }, [props.url]);
 
     return (
         <div
@@ -44,16 +43,25 @@ const URLBar: React.FC<Props> = (props) => {
                 ref={urlInputRef}
                 placeholder="enter image url"
                 defaultValue={props.url}
-                onBlur={e => postRootData("url",{url:urlInputRef.current?.value ?? ""})}
+                onBlur={(e) =>
+                    postRootData("url", {
+                        url: urlInputRef.current?.value ?? "",
+                    })
+                }
                 style={{
                     width: `80%`,
                 }}
             />
-            <button onClick={() => postRootData("url",{url:urlInputRef.current?.value ?? ""})}>
+            <button
+                onClick={() =>
+                    postRootData("url", {
+                        url: urlInputRef.current?.value ?? "",
+                    })
+                }
+            >
                 Apply
             </button>
 
-            
             <input
                 className="right hide"
                 type="text"

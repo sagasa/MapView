@@ -36,7 +36,6 @@ button.select{
     border: 1px solid #2468a0;
 }
 
-
 .pallet{
     margin: 0px;
     display:inline;
@@ -47,22 +46,63 @@ button.select{
     outline-offset: -1px;
 }
 
+.pallet:hover{
+    outline: 1px solid #2468a0;
+    outline-offset: -1px;
+}
+
+.pallet:active{
+    outline: 1px solid #259afa;
+    outline-offset: -1px;
+    background-color: #222;
+}
+
 .pallet.select{
-    outline: 2px solid #2468a0;
+    outline: 2px solid #259afa;
     outline-offset: -2px;
     background-color: #556;
 }
+
 .pallet.selectColor{
     outline: 5px solid #b0d5f3;
     outline-offset: -5px;
     background-color: #556;
 }
 
+
+
+
 .palletHolder{
     margin: 0px;
     width: 128px;
     height: 32px;
+    color: white;
+    font-size: 16px;
+    display: flex;
+    align-items: end;
+    justify-content: center;
 }
+
+.menuItem{
+    position: absolute;
+    pointer-events: all;
+    width: 32px;
+    height: 32px;
+    outline: 1px solid #555;
+    outline-offset: -1px;
+}
+
+.menuItem:not(:hover) div{
+    visibility: hidden;
+}
+
+
+.menuItem:hover{
+    outline: 1px solid #FFF;
+    outline-offset: -1px;
+}
+
+
 
 .right {
     margin: 2px 2px 0px 0px !important;

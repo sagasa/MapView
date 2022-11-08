@@ -46,9 +46,10 @@ const loadData = ()=>{
 
 export default function bookmark(){
   let save: Bookmark = { entryMap: new Map<string, string>() }
-
+  
   try {
     save = loadData()
+    save.entryMap.entries()//データの状態チェック
   } catch (error) {
     console.log("invalid cookie",error);
     save = { entryMap: new Map<string, string>() }
