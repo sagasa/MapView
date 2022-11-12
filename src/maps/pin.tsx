@@ -2,6 +2,7 @@ import * as vec2 from "../vec2";
 import { DispatcherHolder, EventBase } from "../utils";
 import postRootData from "../components/root"
 import {NORMAL_PIN, SINGLETON_PIN} from "../components/drawTools"
+import { Connection } from "../connections/connecton";
 
 const img = new Image();
 img.src = "./backpack.png";
@@ -12,6 +13,10 @@ img.onerror = (e) => {
 type TPinData = {
     id: string;
     type: string;
+    pos: vec2.Vec2;
+};
+type TMove = {
+    id: string;
     pos: vec2.Vec2;
 };
 
@@ -45,12 +50,14 @@ export default class PinTool {
     readonly holder: DispatcherHolder = new DispatcherHolder("pen");
 
     private mode: string = "";
-    private all = new Map<string, TPinData>();
+    private pinMap = new Map<string, TPinData>();
     private singletonPin = new Map<string,string>();
     private grab:string = "";
     private isSingleton = false;
 
     constructor() {
+        //UIイベント系
+
         this.holder.registerFunc(
             (e: EventToolSet) => {
                 if (imageMap.has(e.tool!)) {
@@ -62,11 +69,24 @@ export default class PinTool {
             },
             ["tool"]
         );
+
+        //ネットワーク系
+        Connection.register("pinAdd", (data) => {
+            const pin = JSON.parse(data) as TPinData;
+            this.put(pin,false)
+        });
+        Connection.register("pinDelete", (data) => {
+            this.delete(data,false)
+        });
+        Connection.register("pinMove", (data) => {
+            const move = JSON.parse(data) as TMove;
+            this.move(move.id,move.pos,false)
+        });
     }
 
     private getCollide = (mousePos: vec2.Vec2,scale:number)=>{
         const collide:TPinData[] = []
-        this.all.forEach((pin,k)=>{
+        this.pinMap.forEach((pin,k)=>{
             if(PinTool.collision(mousePos,pin.pos,scale)){
                 collide.push(pin)
             }
@@ -74,11 +94,29 @@ export default class PinTool {
         return collide;
     }
 
-    private addPin=()=>{
-
+    //追加処理
+    private put(pin: TPinData, notfy: boolean = true) {
+        if (notfy) Connection.send("pinAdd", pin);
+        this.pinMap.set(pin.id, pin);
+        postRootData("redraw");
     }
 
-    down = (mousePos: vec2.Vec2,scale:number,buttons:number) => {
+
+    //削除処理
+    private delete(id: string, notfy: boolean = true) {
+        if (notfy) Connection.send("pinDelete", id);
+        this.pinMap.delete(id);
+        postRootData("redraw");
+    }
+
+    //移動処理
+    private move(id: string,pos:vec2.Vec2, notfy: boolean = true) {
+        if (notfy) Connection.send("pinMove", {id:id,pos:pos});
+        this.pinMap.get(id)!.pos = pos
+        postRootData("redraw");
+    }
+
+    mouseDown = (mousePos: vec2.Vec2,scale:number,buttons:number) => {
         const collide = this.getCollide(mousePos,scale);
         if(collide.length!=0){
             //近い順にソート
@@ -87,8 +125,7 @@ export default class PinTool {
                 this.grab = collide[0].id
                 postRootData("cursorAdd",CURSOR_GRAB)
             }else if(buttons & 0b010){
-                this.all.delete(collide[0].id)
-                postRootData("redraw")
+                this.delete(collide[0].id)
             }
             
         }else if(this.mode && buttons & 0b001){
@@ -104,13 +141,13 @@ export default class PinTool {
                 }
             }
             const pin:TPinData = {id:key,pos:mousePos,type:this.mode}
-            this.all.set(key,pin)
+            this.put(pin)
             
             postRootData("cursorAdd",CURSOR_CANGRAB)
         }
     };
 
-    up = (button:number) => {
+    mouseUp = (button:number) => {
         if(this.grab){
             this.grab = ""
             postRootData("cursorRemove",CURSOR_GRAB)
@@ -118,7 +155,7 @@ export default class PinTool {
         }
     };
 
-    move = (mousePos: vec2.Vec2,diff: vec2.Vec2,scale:number) => {
+    mouseMove = (mousePos: vec2.Vec2,diff: vec2.Vec2,scale:number) => {
         let redrawFlag = false
         const collide = this.getCollide(mousePos,scale)
 
@@ -130,7 +167,8 @@ export default class PinTool {
 
         if(this.grab){
             redrawFlag = true
-            this.all.get(this.grab)!.pos = vec2.add(this.all.get(this.grab)!.pos,diff)
+            const pos = vec2.add(this.pinMap.get(this.grab)!.pos,diff)
+            this.move(this.grab,pos)
         }
 
         return redrawFlag;
@@ -146,7 +184,7 @@ export default class PinTool {
         mousePos: vec2.Vec2
     ) => {
         ctx.imageSmoothingEnabled = false
-        this.all.forEach((pin,key)=>{
+        this.pinMap.forEach((pin,key)=>{
 
             ctx.shadowColor = "black"; 
             ctx.shadowBlur  = 0;

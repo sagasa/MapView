@@ -33,7 +33,16 @@ const postRootData = (op: string, event: any = {}) => {
 };
 
 //サーバーとのWS通信系
+
 Connection.connect()
+Connection.onchange = s=>{
+    if(s=="Connected"){
+        Connection.send("joinRoom","GGWP")
+        Connection.send("test","yeee")
+    }
+}
+
+
 
 export default postRootData;
 
@@ -53,9 +62,13 @@ export const AppRoot: React.FC = () => {
             setUrl(searchParams.get("url") ?? "");
         }
         rootDispacher.registerFunc(
-            (e: EventSetUrl) => setUrl(e?.url!!),
+            (e: EventSetUrl) => {setUrl(e?.url!);Connection.send("urlSet",e?.url!)},
             ["url"]
         );
+        //ネットワーク系
+        Connection.register("urlSet",data=>{
+            setUrl(data)
+        })
     }, []);
 
     useEffect(() => {

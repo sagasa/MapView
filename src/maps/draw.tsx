@@ -1,6 +1,7 @@
 import * as vec2 from "../vec2";
 import { DispatcherHolder, EventBase } from "../utils";
 import postRootData from "../components/root";
+import { Connection } from "../connections/connecton";
 
 type TDrawData = {
     id: string;
@@ -32,15 +33,16 @@ export default class PenTool {
     private mode: "none" | "line" | "arrow" | "erase" = "none";
     private isSingleton = false;
 
-    private singletonDrawMap = new Map<string,string>();
+    private singletonDrawMap = new Map<string, string>();
 
     private color: string = "#FF4236";
     private width: number = 5;
 
-    private readonly all = new Map<string, TDrawData>();
+    private readonly strokeMap = new Map<string, TDrawData>();
     private line = false;
 
     constructor() {
+        //UIイベント系
         this.holder.registerFunc(
             (e: EventColorSet) => {
                 this.color = e.color ?? "#FFFFFF";
@@ -49,9 +51,9 @@ export default class PenTool {
         );
         this.holder.registerFunc(
             (e: EventToolSet) => {
-                if (e.tool === "pen"||e.tool === "penm") {
+                if (e.tool === "pen" || e.tool === "penm") {
                     this.mode = "line";
-                } else if (e.tool === "arrow"||e.tool === "arrowm") {
+                } else if (e.tool === "arrow" || e.tool === "arrowm") {
                     this.mode = "arrow";
                 } else if (e.tool === "erase") {
                     this.mode = "erase";
@@ -60,7 +62,7 @@ export default class PenTool {
                 }
 
                 //シングルトンの判定
-                this.isSingleton = e.tool === "arrowm"||e.tool === "penm"
+                this.isSingleton = e.tool === "arrowm" || e.tool === "penm";
             },
             ["tool"]
         );
@@ -70,18 +72,39 @@ export default class PenTool {
             },
             ["lineWidth"]
         );
+
+        //ネットワーク系
+        Connection.register("strokeAdd", (data) => {
+            const draw = JSON.parse(data) as TDrawData;
+            this.put(draw,false)
+        });
+        Connection.register("strokeDelete", (data) => {
+            this.delete(data,false)
+        });
+    }
+
+    //追加処理
+    private put(stroke: TDrawData, notfy: boolean = true) {
+        if (notfy) Connection.send("strokeAdd", stroke);
+        this.strokeMap.set(stroke.id, stroke);
+        postRootData("redraw");
+    }
+
+    //削除処理
+    private delete(id: string, notfy: boolean = true) {
+        if (notfy) Connection.send("strokeDelete", id);
+        this.strokeMap.delete(id);
+        postRootData("redraw");
     }
 
     setShift = (shift: boolean) => {
         this.line = shift;
     };
 
-    onChange = () => {};
-
     start = (pos: vec2.Vec2) => {
-        if (this.mode == "arrow" || this.mode == "line"){
-            if(this.singletonDrawMap.has(this.mode)){
-                this.all.delete(this.singletonDrawMap.get(this.mode)!)
+        if (this.mode == "arrow" || this.mode == "line") {
+            if (this.singletonDrawMap.has(this.mode)) {
+                this.delete(this.singletonDrawMap.get(this.mode)!);
             }
             const key = Math.random().toString(16).slice(2, 10);
             this.current = {
@@ -92,18 +115,19 @@ export default class PenTool {
                 min: vec2.zero(),
                 stroke: [[pos]],
             };
-        }else if (this.mode == "erase") {
+        } else if (this.mode == "erase") {
             this.erase(pos);
+            postRootData("redraw");
         }
     };
 
     //消しゴムツール
     private erase = (pos: vec2.Vec2) => {
         const remove: string[] = [];
-        for (const elem of this.all.values()) {
+        for (const elem of this.strokeMap.values()) {
             //線と点の距離を出す
             if (
-                vec2.contain(elem.min, pos, elem.max,ERASE_RADIUS) &&
+                vec2.contain(elem.min, pos, elem.max, ERASE_RADIUS) &&
                 elem.stroke.some(
                     (arr) => vec2.calcDistLinePoint(arr, pos) < ERASE_RADIUS
                 )
@@ -112,8 +136,8 @@ export default class PenTool {
             }
         }
         remove.forEach((key) => {
-            this.all.delete(key);
-            postRootData("redraw")
+            this.delete(key);
+            postRootData("redraw");
         });
     };
 
@@ -151,8 +175,6 @@ export default class PenTool {
 
     end = () => {
         if (this.current) {
-            
-
             //長さの例外処理
             if (this.current.stroke[0].length == 0) {
                 return;
@@ -204,13 +226,12 @@ export default class PenTool {
                 vec2.inf()
             );
 
-
-            if(this.isSingleton){
-                this.singletonDrawMap.set(this.mode,this.current.id)
+            if (this.isSingleton) {
+                this.singletonDrawMap.set(this.mode, this.current.id);
             }
-            
-            this.all.set(this.current.id, this.current);
-            this.onChange();
+
+            //追加
+            this.put(this.current);
 
             this.current = null;
         }
@@ -241,8 +262,12 @@ export default class PenTool {
         ctx.stroke();
     }
 
-    draw = (ctx: CanvasRenderingContext2D, scale:number,mousePos: vec2.Vec2) => {
-        this.all.forEach((v) => {
+    draw = (
+        ctx: CanvasRenderingContext2D,
+        scale: number,
+        mousePos: vec2.Vec2
+    ) => {
+        this.strokeMap.forEach((v) => {
             PenTool.drawStroke(ctx, v);
         });
         if (this.current) {
@@ -284,24 +309,27 @@ export default class PenTool {
                 ctx.lineTo(p1.x, p1.y);
                 ctx.stroke();
             }
-            
 
             //長さと距離を表示
-            if(this.line){
-                ctx.globalAlpha = 0.4
-                const textSize = Math.floor(36/scale)
-                ctx.font = `${textSize}px sans-serif`
-                ctx.fillStyle = "gray"
+            if (this.line) {
+                ctx.globalAlpha = 0.4;
+                const textSize = Math.floor(36 / scale);
+                ctx.font = `${textSize}px sans-serif`;
+                ctx.fillStyle = "gray";
                 //ctx.fillRect(arr[0].x,arr[0].y-textSize*1,180/scale,textSize*1.2)
                 //ctx.fillRect(arr[0].x,arr[0].y,210/scale,textSize*1.2)
-                ctx.globalAlpha = 1
-                const len = vec2.dist(arr[0],arr[arr.length - 1]).toFixed(1)
-                const vec = vec2.sub(arr[0],arr[arr.length - 1])
-                const angle = ((Math.atan2(vec.y,vec.x)/Math.PI/2*360+180+90)%360).toFixed(1)
-                ctx.fillStyle = "white"
+                ctx.globalAlpha = 1;
+                const len = vec2.dist(arr[0], arr[arr.length - 1]).toFixed(1);
+                const vec = vec2.sub(arr[0], arr[arr.length - 1]);
+                const angle = (
+                    ((Math.atan2(vec.y, vec.x) / Math.PI / 2) * 360 +
+                        180 +
+                        90) %
+                    360
+                ).toFixed(1);
+                ctx.fillStyle = "white";
                 //ctx.fillText(`Dir:${angle}`,arr[0].x,arr[0].y)
                 //ctx.fillText(`Dist:${len}`,arr[0].x,arr[0].y+textSize)
-                
             }
         }
 

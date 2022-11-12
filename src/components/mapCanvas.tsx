@@ -186,13 +186,11 @@ const MapCanvas: React.FC<Props> = (props) => {
                     updateDraw();
                 }
                 //ピン関連
-                if(pinRef.current.move(
+                pinRef.current.mouseMove(
                     imgPos,
                     vec2.div(mouseDiff,lastViewState.current.scale),
                     lastViewState.current.scale
-                )){
-                    updateDraw();
-                }
+                )
                 
             }
         },
@@ -216,7 +214,7 @@ const MapCanvas: React.FC<Props> = (props) => {
                 drawRef.current.start(imagePos);
                 updateDraw();
             }
-            pinRef.current.down(imagePos, lastViewState.current.scale,event.buttons);
+            pinRef.current.mouseDown(imagePos, lastViewState.current.scale,event.buttons);
         },
         []
     );
@@ -227,7 +225,7 @@ const MapCanvas: React.FC<Props> = (props) => {
                 applyCursor({op:"cursorRemove",...CURSOR_MOVE});
                 event.preventDefault();
             }
-            pinRef.current.up(event.button)
+            pinRef.current.mouseUp(event.button)
             //ペンを離す
             if (event.button == 0) {
                 drawRef.current.end();
