@@ -53,6 +53,8 @@ export type EventViewChange = {
 const CURSOR_MOVE = {cursor:"move",priority:5}
 
 const MapCanvas: React.FC<Props> = (props) => {
+    const dispatcherHolder = useRef(new DispatcherHolder("canvas"))
+
     const mainCanvasRef = useRef<HTMLCanvasElement>(null);
     const imgRef = useRef(new Image());
     const size: Size = useWindowSize();
@@ -65,11 +67,18 @@ const MapCanvas: React.FC<Props> = (props) => {
 
     //命令ディスパッチャーを登録
     useEffect(() => {
-        props.control.registerFunc(applyViewChange, ["move", "scale", "set"]);
-        props.control.registerFunc((e) => fitImg(), ["reset"]);
-        props.control.registerFunc(applyCursor, ["cursorAdd","cursorRemove"]);
-        props.control.registerHolder(drawRef.current.holder);
-        props.control.registerHolder(pinRef.current.holder);
+        dispatcherHolder.current.registerFunc(applyViewChange, ["move", "scale", "set"]);
+        dispatcherHolder.current.registerFunc((e) => fitImg(), ["reset"]);
+        dispatcherHolder.current.registerFunc((e) => updateDraw(), ["redraw"]);
+        dispatcherHolder.current.registerFunc(applyCursor, ["cursorAdd","cursorRemove"]);
+        dispatcherHolder.current.registerHolder(drawRef.current.holder);
+        dispatcherHolder.current.registerHolder(pinRef.current.holder);
+
+        props.control.registerHolder(dispatcherHolder.current)
+        
+        return ()=>{
+            props.control.unregisterHolder(dispatcherHolder.current)
+        }
     }, [props.control]);
 
     //カーソルの状態管理
@@ -195,20 +204,19 @@ const MapCanvas: React.FC<Props> = (props) => {
         (event: React.MouseEvent<HTMLCanvasElement>) => {
             mainCanvasRef.current?.focus();
             event.preventDefault();
-
+            const imagePos = canvas2ImagePos(
+                                screen2CanvasPos(event.pageX, event.pageY)
+                            );
             if (event.buttons & 0b110) {
                 inDragRef.current = true;
                 applyCursor({op:"cursorAdd",...CURSOR_MOVE});
             } else if (event.buttons & 0b001) {
-                const imagePos = canvas2ImagePos(
-                    screen2CanvasPos(event.pageX, event.pageY)
-                );
+                
                 //ペンを下ろす
                 drawRef.current.start(imagePos);
                 updateDraw();
-
-                pinRef.current.down(imagePos, lastViewState.current.scale);
             }
+            pinRef.current.down(imagePos, lastViewState.current.scale,event.buttons);
         },
         []
     );
@@ -325,7 +333,7 @@ const MapCanvas: React.FC<Props> = (props) => {
             ctx.drawImage(img, 0, 0, img.width, img.height);
 
             const mousePos = canvas2ImagePos(lastMousePosRef.current);
-            drawRef.current.draw(ctx, mousePos);
+            drawRef.current.draw(ctx, viewState.scale,mousePos);
             pinRef.current.draw(ctx, viewState.scale, mousePos);
 
             ctx.save();

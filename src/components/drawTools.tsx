@@ -9,7 +9,7 @@ import React, {
     useMemo,
 } from "react";
 import postRootData from "./root";
-import PinJson from "../maps/pins.json";
+
 
 import InputColor from "./inputColor";
 
@@ -67,7 +67,7 @@ const pins = [
     ],
 ];
 
-const singlePins = [
+const singleTools = [
     [
         { name: "penm", image: "./penm.png" },
         { name: "arrowm", image: "./arrowm.png" },
@@ -87,9 +87,9 @@ const draws = [
 ];
 
 
-export const PIN_NAMES = pins.reduce((prev,arr)=>{prev.push(...arr);return prev},[])
-
-console.log(PIN_NAMES)
+export const NORMAL_PIN = pins.reduce((prev,arr)=>{prev.push(...arr);return prev},[])
+export const SINGLETON_PIN = singleTools[1]
+console.log(NORMAL_PIN)
 
 const DrawTools: React.FC<Props> = (props) => {
     
@@ -160,7 +160,7 @@ const DrawTools: React.FC<Props> = (props) => {
             <div className="palletHolder">pin</div>
             {makeMenu(pins)}
             <div className="palletHolder">single pin</div>
-            {makeMenu(singlePins)}
+            {makeMenu(singleTools)}
             <div className="palletHolder">draw</div>
             <div className="palletHolder">
                 {draws.map((e) => makeMenuItem(e))}

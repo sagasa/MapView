@@ -8,8 +8,6 @@ import React, {
     useReducer,
 } from "react";
 
-import "../bookmark";
-import bookmark from "../bookmark";
 import postRootData from "./root";
 
 type Props = {

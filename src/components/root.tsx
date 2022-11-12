@@ -9,21 +9,31 @@ import React, {
 } from "react";
 
 import * as vec2 from "../vec2";
-import "../bookmark";
 import bookmark from "../bookmark";
 import MapCanvas, { EventViewChange } from "./mapCanvas";
 import { DispatcherHolder, EventBase } from "../utils";
+
+import {Connection} from "../connections/connecton"
 
 import URLBar from "./urlbar";
 import BookMarkBar from "./bookmarkbar";
 import DrawTools from "./drawTools";
 import MenuTest from "./menu";
-
-const postRootData = (op: string, event: any = {}) => {
-    rootDispacher.dispatch({ op: op, ...event });
-};
+import ConnInfo from "./connInfo"
 
 const rootDispacher = new DispatcherHolder("root");
+
+const postRootData = (op: string, event: any = {}) => {
+    if(event===undefined){
+        rootDispacher.dispatch({ op: op});
+    }else{
+        rootDispacher.dispatch({ op: op, ...event });
+    }
+    
+};
+
+//サーバーとのWS通信系
+Connection.connect()
 
 export default postRootData;
 
@@ -66,6 +76,7 @@ export const AppRoot: React.FC = () => {
             <BookMarkBar url={url}></BookMarkBar>
             <MapCanvas url={url} control={rootDispacher}></MapCanvas>
             <DrawTools></DrawTools>
+            <ConnInfo></ConnInfo>
             <MenuTest></MenuTest>
         </div>
     );

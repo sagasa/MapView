@@ -1,4 +1,5 @@
 
+
 type WSState = `Disconnected` | `Connecting` | `Connected`;
 
 //接続ホルダー
