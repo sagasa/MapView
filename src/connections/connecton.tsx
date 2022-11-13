@@ -16,6 +16,7 @@ const createWS = () => {
   let ws: WebSocket;
   let retryCount = 3;
   let handler = new Map<string,(data:string)=>void>
+  const queue:{name:string,data:any}[] = []
 
   const register = (ops:string,func:(data:string)=>void)=>{
     if(handler.has(ops))return false

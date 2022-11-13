@@ -72,6 +72,13 @@ export default class PenTool {
             },
             ["lineWidth"]
         );
+        this.holder.registerFunc(
+            () => {
+                this.strokeMap.clear()
+                postRootData("redraw");
+            },
+            ["clear"]
+        );
 
         //ネットワーク系
         Connection.register("strokeAdd", (data) => {

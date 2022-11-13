@@ -109,6 +109,7 @@ const BookMarkBar: React.FC<Props> = (props:Props) => {
         <div
             style={{
                 background: "#2A3132",
+                height:"24px"
             }}
         >
             {bookmarkList}

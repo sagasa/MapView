@@ -10,8 +10,8 @@ import React, {
 } from "react";
 import postRootData from "./root";
 
-
 import InputColor from "./inputColor";
+import Manager from "../cookie";
 
 type Props = {};
 
@@ -23,7 +23,7 @@ const test = (event: React.MouseEvent<HTMLDivElement>) => {
 type MenuElement = {
     image: string;
     name: string;
-    noState?:boolean;
+    noState?: boolean;
     func?: () => void;
 };
 
@@ -40,11 +40,10 @@ const tools = [
     [
         { name: "move", image: "./move.png" },
         //{ name: "arrowm", image: "./arrowm.png" },
-        { name: "undo", image: "./undo.png" ,noState:true},
-        { name: "redo", image: "./redo.png" ,noState:true},
-    ]
+        { name: "undo", image: "./undo.png", noState: true },
+        { name: "redo", image: "./redo.png", noState: true },
+    ],
 ];
-
 
 const pins = [
     [
@@ -86,34 +85,38 @@ const draws = [
     { name: "erase", image: "./erase.png" },
 ];
 
-
-export const NORMAL_PIN = pins.reduce((prev,arr)=>{prev.push(...arr);return prev},[])
-export const SINGLETON_PIN = singleTools[1]
-console.log(NORMAL_PIN)
+export const NORMAL_PIN = pins.reduce((prev, arr) => {
+    prev.push(...arr);
+    return prev;
+}, []);
+export const SINGLETON_PIN = singleTools[1];
+console.log(NORMAL_PIN);
 
 const DrawTools: React.FC<Props> = (props) => {
-    
-
     const [current, setCurrent] = useState("move");
 
     const [colorIndex, setColorIndex] = useState("#FF4236");
     const [color, setColor] = useState("#FF4236");
     const [width, setWidth] = useState(5);
 
+    const nicknameRef = useRef<HTMLInputElement>(null);
+
     //選択状態を反映したメニューアイテムを作成
     const makeMenuItem = (element: MenuElement) => {
+        const func = () => {
+            if (!element.noState) {
+                setCurrent(element.name);
+            }
+            postRootData("tool", { tool: element.name });
+        }
         return (
             <div
                 key={element.name}
                 className={
                     "pallet" + (current == element.name ? " select" : "")
                 }
-                onClick={(e) => {
-                    if(!element.noState){
-                        setCurrent(element.name);
-                    }
-                    postRootData("tool", { tool: element.name });
-                }}
+                onTouchEnd={func}
+                onClick={func}
                 style={{ backgroundImage: `url(${element.image})` }}
             ></div>
         );
@@ -156,6 +159,17 @@ const DrawTools: React.FC<Props> = (props) => {
                 position: "fixed",
             }}
         >
+            <div className="palletHolder" style={{ alignItems: "baseline" }}>
+                <input
+                    type="text"
+                    style={{ width: 110, margin: "0px", textAlign: "center" }}
+                    placeholder={"nickname"}
+                    ref={nicknameRef}
+                    maxLength={10}
+                    defaultValue={Manager.getUserName()}
+                    onChange={e=>Manager.setUserName(e.target.value)}
+                />
+            </div>
             {makeMenu(tools)}
             <div className="palletHolder">pin</div>
             {makeMenu(pins)}
@@ -193,13 +207,7 @@ const DrawTools: React.FC<Props> = (props) => {
                     style={{ width: "96px" }}
                 ></input>
             </div>
-            <div
-                className={
-                    "palletHolder"
-                }
-            >
-                {makeColor(colors)}
-            </div>
+            <div className={"palletHolder"}>{makeColor(colors)}</div>
 
             <div className="palletHolder">atomic</div>
 

@@ -13,38 +13,46 @@ import bookmark from "../bookmark";
 import MapCanvas, { EventViewChange } from "./mapCanvas";
 import { DispatcherHolder, EventBase } from "../utils";
 
-import {Connection} from "../connections/connecton"
+import { Connection } from "../connections/connecton";
 
 import URLBar from "./urlbar";
 import BookMarkBar from "./bookmarkbar";
 import DrawTools from "./drawTools";
 import MenuTest from "./menu";
-import ConnInfo from "./connInfo"
+import ConnInfo from "./connInfo";
 
 const rootDispacher = new DispatcherHolder("root");
 
 const postRootData = (op: string, event: any = {}) => {
-    if(event===undefined){
-        rootDispacher.dispatch({ op: op});
-    }else{
+    if (event === undefined) {
+        rootDispacher.dispatch({ op: op });
+    } else {
         rootDispacher.dispatch({ op: op, ...event });
     }
-    
 };
 
 //サーバーとのWS通信系
-
-Connection.connect()
-Connection.onchange = s=>{
-    if(s=="Connected"){
-        Connection.send("joinRoom","GGWP")
-        Connection.send("test","yeee")
+Connection.connect();
+Connection.onchange = (s) => {
+    if (s == "Connected") {
+        Connection.send("joinRoom", "GGWP");
+        Connection.send("test", "yeee");
     }
-}
-
-
+};
 
 export default postRootData;
+
+//スマホ関連
+const touchHandler = (event: any) => {
+    if (event.touches.length > 1) {
+        
+    }event.preventDefault();
+};
+document.addEventListener("touchstart", touchHandler, {
+    passive: false,
+});
+
+
 
 type EventSetUrl = {
     op: string;
@@ -61,14 +69,24 @@ export const AppRoot: React.FC = () => {
         if (searchParams.has("url")) {
             setUrl(searchParams.get("url") ?? "");
         }
+        if (searchParams.has("room")) {
+            searchParams.get("room");
+        }
+        //UIイベント
         rootDispacher.registerFunc(
-            (e: EventSetUrl) => {setUrl(e?.url!);Connection.send("urlSet",e?.url!)},
+            (e: EventSetUrl) => {
+                setUrl(e?.url!);
+                Connection.send("urlSet", e?.url!);
+            },
             ["url"]
         );
         //ネットワーク系
-        Connection.register("urlSet",data=>{
-            setUrl(data)
-        })
+        Connection.register("acceptJoin", (data) => {
+            postRootData("clear");
+        });
+        Connection.register("urlSet", (data) => {
+            setUrl(data);
+        });
     }, []);
 
     useEffect(() => {
@@ -90,7 +108,7 @@ export const AppRoot: React.FC = () => {
             <MapCanvas url={url} control={rootDispacher}></MapCanvas>
             <DrawTools></DrawTools>
             <ConnInfo></ConnInfo>
-            <MenuTest></MenuTest>
+            
         </div>
-    );
+    );//<MenuTest></MenuTest>
 };

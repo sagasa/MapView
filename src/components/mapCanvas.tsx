@@ -13,6 +13,7 @@ import * as vec2 from "../vec2";
 import { DispatcherHolder } from "../utils";
 import DrawPen from "../maps/draw";
 import PinTool from "../maps/pin";
+import { Connection } from "../connections/connecton";
 
 //位置
 const ORIGIN = Object.freeze({ x: 0, y: 0 });
@@ -357,6 +358,8 @@ const MapCanvas: React.FC<Props> = (props) => {
             tabIndex={0}
             onMouseMove={handleMouseMove}
             onMouseDown={handleMouseDown}
+            onTouchStart={e=>e}
+            onPointerOut={e=>Connection.send("log",{n:e.buttons,t:e.timeStamp})}
             onMouseUp={handleMouseUp}
             onWheel={handleMouseWheel}
             onKeyDown={handleKeyDown}

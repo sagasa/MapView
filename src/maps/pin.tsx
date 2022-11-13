@@ -3,6 +3,7 @@ import { DispatcherHolder, EventBase } from "../utils";
 import postRootData from "../components/root"
 import {NORMAL_PIN, SINGLETON_PIN} from "../components/drawTools"
 import { Connection } from "../connections/connecton";
+import CookieManager from "../cookie";
 
 const img = new Image();
 img.src = "./backpack.png";
@@ -13,6 +14,7 @@ img.onerror = (e) => {
 type TPinData = {
     id: string;
     type: string;
+    label:string
     pos: vec2.Vec2;
 };
 type TMove = {
@@ -68,6 +70,14 @@ export default class PinTool {
                 }
             },
             ["tool"]
+        );
+
+        this.holder.registerFunc(
+            () => {
+                this.pinMap.clear()
+                postRootData("redraw");
+            },
+            ["clear"]
         );
 
         //ネットワーク系
@@ -132,7 +142,7 @@ export default class PinTool {
             //追加処理
             let key = Math.random().toString(16).slice(2, 10);
             
-            //１
+            //1つのみ存在できるもの
             if(this.isSingleton){
                 if(this.singletonPin.has(this.mode)){
                     key = this.singletonPin.get(this.mode)!
@@ -140,7 +150,7 @@ export default class PinTool {
                     this.singletonPin.set(this.mode,key)
                 }
             }
-            const pin:TPinData = {id:key,pos:mousePos,type:this.mode}
+            const pin:TPinData = {id:key,pos:mousePos,type:this.mode,label:this.isSingleton?CookieManager.getUserName():""}
             this.put(pin)
             
             postRootData("cursorAdd",CURSOR_CANGRAB)
@@ -183,6 +193,8 @@ export default class PinTool {
         scale: number,
         mousePos: vec2.Vec2
     ) => {
+        const imageSize = 64/scale
+
         ctx.imageSmoothingEnabled = false
         this.pinMap.forEach((pin,key)=>{
 
@@ -193,24 +205,37 @@ export default class PinTool {
                 ctx.shadowOffsetY = 4;
                 ctx.drawImage(
                     imageMap.get(pin.type)!,
-                    pin.pos.x - 34 / scale,
-                    pin.pos.y - 34 / scale,
-                    64 / scale,
-                    64 / scale
+                    pin.pos.x - imageSize/1.88,
+                    pin.pos.y - imageSize/1.88,
+                    imageSize,
+                    imageSize
                 );
             }else{
                 ctx.drawImage(
                     imageMap.get(pin.type)!,
-                    pin.pos.x - 32 / scale,
-                    pin.pos.y - 32 / scale,
-                    64 / scale,
-                    64 / scale
+                    pin.pos.x - imageSize/2,
+                    pin.pos.y - imageSize/2,
+                    imageSize,
+                    imageSize
                 );
             }
-
             
             ctx.shadowOffsetX = 0;    
             ctx.shadowOffsetY = 0;
+
+            if(pin.label){
+                const label = pin.label
+                const textSize = Math.floor(18 / scale);
+                ctx.font = `${textSize}px sans-serif`;
+                const textWidth = ctx.measureText(label).width
+                ctx.fillStyle = "black";
+                ctx.globalAlpha = 0.3
+                ctx.fillRect(pin.pos.x - textWidth/1.8,pin.pos.y+ imageSize/2.6,textWidth*1.1,textSize*1.1)
+                ctx.globalAlpha = 1
+                ctx.fillStyle = "white";
+                ctx.fillText(label,pin.pos.x - textWidth/2,pin.pos.y+ imageSize/2.6+textSize)
+            }
+            
         })
         ctx.imageSmoothingEnabled = true
     };
