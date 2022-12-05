@@ -259,7 +259,7 @@ const MapCanvas: React.FC<Props> = (props) => {
             mainCanvasRef.current?.height! / img.height
         );
         const offset = { x: 0, y: 0 };
-        offset.x = mainCanvasRef.current?.width! - img.width * scale;
+        offset.x = mainCanvasRef.current?.width! - img.width * scale + 128;
         offset.x /= scale * 2;
         offset.y = mainCanvasRef.current?.height! - img.height * scale;
         offset.y /= scale * 2;

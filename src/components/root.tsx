@@ -21,6 +21,10 @@ import DrawTools from "./drawTools";
 import MenuTest from "./menu";
 import ConnInfo from "./connInfo";
 
+//モバイル判別
+export const isMobile = navigator.userAgent.match(/iPhone|Android.+Mobile/)!==null
+
+//イベントディスパッチャーのルート
 const rootDispacher = new DispatcherHolder("root");
 
 const postRootData = (op: string, event: any = {}) => {
@@ -36,7 +40,7 @@ Connection.connect();
 Connection.onchange = (s) => {
     if (s == "Connected") {
         Connection.send("joinRoom", "GGWP");
-        Connection.send("test", "yeee");
+        Connection.send("test", isMobile);
     }
 };
 
@@ -46,12 +50,14 @@ export default postRootData;
 const touchHandler = (event: any) => {
     if (event.touches.length > 1) {
         
-    }event.preventDefault();
+    }
 };
 document.addEventListener("touchstart", touchHandler, {
     passive: false,
 });
 
+
+//==
 
 
 type EventSetUrl = {
