@@ -2,6 +2,9 @@
 
 type WSState = `Disconnected` | `Connecting` | `Connected`;
 
+
+const aaa = new Map<string,number>; 
+
 //接続ホルダー
 type Connection = {
   state:WSState
@@ -33,6 +36,9 @@ const createWS = () => {
   };
 
   const connect = () => {
+
+    return connection;
+
     connection.state = "Connecting"
     connection.onchange?.("Connecting");
     const url = `ws://${window.location.hostname}:3001/ws`;
@@ -63,7 +69,7 @@ const createWS = () => {
   };
   connection.connect = connect;
   connection.send = (name, data) => {
-    if (ws.readyState == ws.OPEN) {
+    if (ws&&ws.readyState == ws.OPEN) {
       //console.log(`${name}:${data}`, JSON.stringify(data));
       if(typeof(data)==="object"){
         ws.send(`${name}:${JSON.stringify(data)}`);

@@ -21,6 +21,12 @@ import DrawTools from "./drawTools";
 import MenuTest from "./menu";
 import ConnInfo from "./connInfo";
 
+function Test (){
+    return(
+        <div></div>
+    )
+}
+
 //モバイル判別
 export const isMobile = navigator.userAgent.match(/iPhone|Android.+Mobile/)!==null
 
@@ -67,6 +73,8 @@ type EventSetUrl = {
 
 export const AppRoot: React.FC = () => {
     const [url, setUrl] = useState("");
+
+    const [count,setCount] = useState<number[]>([]);
 
     //初期化
     useEffect(() => {

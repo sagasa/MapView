@@ -10,9 +10,20 @@ import React, {
 
 import postRootData from "./root";
 
+
 type Props = {
     url: string;
 };
+
+function Testfunc(props:Props){
+
+}
+
+
+const test :Props={
+    url:"",
+
+}
 
 const URLBar: React.FC<Props> = (props) => {
     const urlInputRef = useRef<HTMLInputElement>(null);
